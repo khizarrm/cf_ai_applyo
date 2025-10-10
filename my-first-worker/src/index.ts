@@ -15,6 +15,71 @@
 import { createAuth } from './auth';
 import { requireAuth } from './middleware/auth';
 
+const DEV_FRONTEND_ORIGIN = 'http://localhost:3000';
+
+function parseOrigin(value?: string | null) {
+	if (!value) return null;
+	try {
+		return new URL(value).origin;
+	} catch {
+		return value;
+	}
+}
+
+function getAllowedOrigins(env: Env): Set<string> {
+	const origins = new Set<string>();
+	const baseOrigin = parseOrigin(env.BASE_URL);
+	if (baseOrigin) origins.add(baseOrigin);
+	const frontendFromEnv = parseOrigin((env as { FRONTEND_URL?: string }).FRONTEND_URL);
+	if (frontendFromEnv) origins.add(frontendFromEnv);
+	origins.add(DEV_FRONTEND_ORIGIN);
+	return origins;
+}
+
+function createCorsHeaders(request: Request, env: Env) {
+	const requestOrigin = request.headers.get('Origin');
+	const allowedOrigins = getAllowedOrigins(env);
+
+	if (requestOrigin && !allowedOrigins.has(requestOrigin)) {
+		return null;
+	}
+
+	const headers: Record<string, string> = {
+		'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+		'Access-Control-Allow-Headers': 'Content-Type, Authorization, Cookie, X-Requested-With, Accept, Origin',
+		'Access-Control-Allow-Credentials': 'true',
+		'Access-Control-Max-Age': '86400',
+		'Vary': 'Origin',
+	};
+
+	const originToUse = requestOrigin ?? [...allowedOrigins][0];
+	if (originToUse) {
+		headers['Access-Control-Allow-Origin'] = originToUse;
+	}
+
+	return headers;
+}
+
+function withCorsHeaders(response: Response, corsHeaders: Record<string, string>) {
+	const headers = new Headers(response.headers);
+	for (const [key, value] of Object.entries(corsHeaders)) {
+		if (key.toLowerCase() === 'vary' && headers.has('Vary')) {
+			const existing = headers.get('Vary');
+			if (existing && !existing.split(',').map((item) => item.trim().toLowerCase()).includes(value.toLowerCase())) {
+				headers.set('Vary', `${existing}, ${value}`);
+			}
+			continue;
+		}
+		headers.set(key, value);
+	}
+
+	return new Response(response.body, {
+		status: response.status,
+		statusText: response.statusText,
+		headers,
+	});
+}
+
 interface ChatStartRequest {
 	title?: string;
 }
@@ -29,76 +94,81 @@ export default {
 		const url = new URL(request.url);
 		const method = request.method;
 
-		// CORS headers - Allow credentials for cookie-based auth
-		const corsHeaders = {
-			'Access-Control-Allow-Origin': '*',
-			'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
-			'Access-Control-Allow-Headers': 'Content-Type, Cookie, Authorization',
-			'Access-Control-Allow-Credentials': 'true',
-			'Content-Type': 'application/json',
-		};
+		const corsHeaders = createCorsHeaders(request, env);
+		if (!corsHeaders) {
+			return new Response(
+				JSON.stringify({ error: 'Origin not allowed' }),
+				{
+					status: 403,
+					headers: {
+						'Content-Type': 'application/json',
+						'Vary': 'Origin',
+					},
+				}
+			);
+		}
 
-		// Handle CORS preflight
 		if (method === 'OPTIONS') {
 			return new Response(null, { headers: corsHeaders });
 		}
 
 		try {
-			// 1️⃣ PUBLIC ROUTES - Auth handler (no guard needed)
 			if (url.pathname.startsWith('/api/auth/')) {
-				const auth = createAuth(env, request.cf as any); // Type cast needed for Cloudflare Workers
-				return auth.handler(request);
+				const auth = createAuth(env, request.cf as any);
+				const authResponse = await auth.handler(request);
+				return withCorsHeaders(authResponse, corsHeaders);
 			}
 
-			// 2️⃣ PROTECTED ROUTES - Apply auth guard (Better Auth best practice)
-			const { error, session, user } = await requireAuth(request, env);
+		const { error, user } = await requireAuth(request, env);
 			if (error) {
-				return error; // Return 401 if not authenticated
+				return withCorsHeaders(error, corsHeaders);
 			}
 
-			// At this point, we have a guaranteed authenticated session and user!
-			// user.id is validated and secure
+			if (!user) {
+				return withCorsHeaders(
+					new Response(JSON.stringify({ error: 'Unauthorized' }), {
+						status: 401,
+						headers: corsHeaders,
+					}),
+					corsHeaders
+				);
+			}
 
-			// 3️⃣ CHAT ROUTES - All protected with session
-
-			// POST /chat/start - Create new chat (derive identity from session)
 			if (method === 'POST' && url.pathname === '/chat/start') {
 				const body: ChatStartRequest = await request.json();
-				
 				const chatId = crypto.randomUUID();
 				const title = body.title || 'New Chat';
-				
-				// Use user.id from session (secure - no client input needed!)
-				await env.applyo.prepare(
-					'INSERT INTO chats (id, user_id, title, created_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)'
-				).bind(chatId, user.id, title).run();
+
+				await env.applyo
+					.prepare('INSERT INTO chats (id, user_id, title, created_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)')
+					.bind(chatId, user.id, title)
+					.run();
 
 				return new Response(
-					JSON.stringify({ 
+					JSON.stringify({
 						chat_id: chatId,
 						title,
-						created_at: new Date().toISOString()
+						created_at: new Date().toISOString(),
 					}),
-					{ 
+					{
 						headers: {
 							...corsHeaders,
-							'Cache-Control': 'no-store' // Better Auth recommendation
-						}
+							'Cache-Control': 'no-store',
+						},
 					}
 				);
 			}
 
-			// POST /chat/:id/message - Send message and get reply (validate ownership)
 			const messageMatch = url.pathname.match(/^\/chat\/([^\/]+)\/message$/);
 			if (method === 'POST' && messageMatch) {
 				const chatId = messageMatch[1];
 				const body: MessageRequest = await request.json();
 
 				if (!body.content || !body.role) {
-					return new Response(
-						JSON.stringify({ error: 'content and role are required' }),
-						{ status: 400, headers: corsHeaders }
-					);
+				return new Response(
+					JSON.stringify({ error: 'content and role are required' }),
+					{ status: 400, headers: corsHeaders }
+				);
 				}
 
 				// Defense in depth: Verify chat exists AND belongs to user
@@ -158,7 +228,6 @@ export default {
 				);
 			}
 
-			// GET /chat/:id - Fetch chat history (validate ownership)
 			const chatMatch = url.pathname.match(/^\/chat\/([^\/]+)$/);
 			if (method === 'GET' && chatMatch) {
 				const chatId = chatMatch[1];
@@ -194,7 +263,6 @@ export default {
 				);
 			}
 
-			// GET /chats - List all chats for authenticated user (derive from session)
 			if (method === 'GET' && url.pathname === '/chats') {
 				const page = parseInt(url.searchParams.get('page') || '1');
 				const limit = 20;
@@ -211,26 +279,25 @@ export default {
 					'SELECT * FROM chats WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?'
 				).bind(user.id, limit, offset).all();
 
-				return new Response(
-					JSON.stringify({
-						chats: chats.results,
-						pagination: {
-							page,
-							limit,
-							total: totalChats,
-							total_pages: Math.ceil((totalChats as number) / limit)
-						}
-					}),
-					{ 
-						headers: {
-							...corsHeaders,
-							'Cache-Control': 'no-store'
-						}
+			return new Response(
+				JSON.stringify({
+					chats: chats.results,
+					pagination: {
+						page,
+						limit,
+						total: totalChats,
+						total_pages: Math.ceil((totalChats as number) / limit)
 					}
-				);
+				}),
+				{ 
+					headers: {
+						...corsHeaders,
+						'Cache-Control': 'no-store'
+					}
+				}
+			);
 			}
 
-			// DELETE /chat/:id - Delete chat and all messages (validate ownership)
 			const deleteMatch = url.pathname.match(/^\/chat\/([^\/]+)$/);
 			if (method === 'DELETE' && deleteMatch) {
 				const chatId = deleteMatch[1];
@@ -240,11 +307,11 @@ export default {
 					'SELECT id FROM chats WHERE id = ? AND user_id = ?'
 				).bind(chatId, user.id).first();
 
-				if (!chat) {
-					return new Response(
-						JSON.stringify({ error: 'Chat not found or access denied' }),
-						{ status: 404, headers: corsHeaders }
-					);
+			if (!chat) {
+				return new Response(
+					JSON.stringify({ error: 'Chat not found or access denied' }),
+					{ status: 404, headers: corsHeaders }
+				);
 				}
 
 				// Delete all messages first (cascade will handle this, but explicit is better)
@@ -257,20 +324,20 @@ export default {
 					'DELETE FROM chats WHERE id = ?'
 				).bind(chatId).run();
 
-				return new Response(
-					JSON.stringify({ 
-						success: true,
-						message: 'Chat and all messages deleted successfully'
-					}),
-					{ headers: corsHeaders }
-				);
+			return new Response(
+				JSON.stringify({ 
+					success: true,
+					message: 'Chat and all messages deleted successfully'
+				}),
+				{ headers: corsHeaders }
+			);
 			}
 
 			// Default 404
-			return new Response(
-				JSON.stringify({ error: 'Not Found' }),
-				{ status: 404, headers: corsHeaders }
-			);
+		return new Response(
+			JSON.stringify({ error: 'Not Found' }),
+			{ status: 404, headers: corsHeaders }
+		);
 
 		} catch (error) {
 			console.error('Worker error:', error);
