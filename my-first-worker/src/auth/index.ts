@@ -7,13 +7,15 @@ import { schema } from "../db";
 
 // Single auth configuration that handles both CLI and runtime scenarios
 function createAuth(env? : Env, cf?: IncomingRequestCfProperties) {
-    // Use actual DB for runtime, empty object for CLI
     const db = env ? drizzle(env.applyo, { schema, logger: true }) : ({} as any);
-
+    
+    const baseURL = env?.BASE_URL || "http://localhost:8787";
+    const frontendURL = env?.FRONTEND_URL || "http://localhost:3000";
+    
     return betterAuth({
-        // Base URL for OAuth redirects
-        baseURL: env?.BASE_URL || "http://localhost:8787",
-        
+        baseURL,
+        secret: env?.BETTER_AUTH_SECRET || "dev-secret-key-at-least-32-chars",
+        trustedOrigins: [frontendURL, baseURL],
         ...withCloudflare(
             {
                 autoDetectIpAddress: true,
@@ -34,17 +36,17 @@ function createAuth(env? : Env, cf?: IncomingRequestCfProperties) {
                     enabled: true,
                 },
                 socialProviders: {
-                    google: {
-                        clientId: env?.GOOGLE_CLIENT_ID || "",
+                    google: { 
+                        clientId: env?.GOOGLE_CLIENT_ID || "", 
                         clientSecret: env?.GOOGLE_CLIENT_SECRET || "",
-                    },
+                        callbackURL: frontendURL, // Redirect back to frontend after OAuth
+                    }, 
                 },
                 rateLimit: {
                     enabled: true,
                 },
             }
         ),
-        // Only add database adapter for CLI schema generation
         ...(env
             ? {}
             : {
@@ -57,8 +59,6 @@ function createAuth(env? : Env, cf?: IncomingRequestCfProperties) {
     });
 }
 
-// Export for CLI schema generation
 export const auth = createAuth();
 
-// Export for runtime usage
 export { createAuth };

@@ -1,4 +1,4 @@
-export const API_URL = 'https://my-first-worker.applyo.workers.dev'
+export const API_URL = 'http://localhost:8787'
   // process.env.NEXT_PUBLIC_API_URL ||
   // (process.env.NODE_ENV === 'development'
   //   ? 'http://localhost:8787'

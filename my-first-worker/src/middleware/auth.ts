@@ -9,11 +9,20 @@ import { createAuth } from "../auth";
 export async function requireAuth(request: Request, env: Env) {
     const auth = createAuth(env, request.cf as any); // Type cast needed for Cloudflare Workers
     
+    // Log request details
+    console.log('📨 Request URL:', request.url);
+    console.log('🍪 Cookie header:', request.headers.get('cookie'));
+    console.log('🔑 Authorization header:', request.headers.get('authorization'));
+    
     const session = await auth.api.getSession({
         headers: request.headers
     });
 
-    if (!session?.data?.session) {
+    console.log('🔍 getSession() returned:', JSON.stringify(session, null, 2));
+    console.log('🔍 Session exists?', !!session?.session);
+    console.log('🔍 User exists?', !!session?.user);
+
+    if (!session?.session) {
         return {
             error: new Response(
                 JSON.stringify({ error: 'Unauthorized - Please sign in' }),
@@ -32,8 +41,8 @@ export async function requireAuth(request: Request, env: Env) {
 
     return {
         error: null,
-        session: session.data.session,
-        user: session.data.user
+        session: session.session,
+        user: session.user
     };
 }
 
@@ -49,8 +58,8 @@ export async function getSession(request: Request, env: Env) {
     });
 
     return {
-        session: session?.data?.session || null,
-        user: session?.data?.user || null
+        session: session?.session || null,
+        user: session?.user || null
     };
 }
 

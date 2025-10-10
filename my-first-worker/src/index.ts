@@ -14,7 +14,6 @@
 
 import { createAuth } from './auth';
 import { requireAuth } from './middleware/auth';
-
 const DEV_FRONTEND_ORIGIN = 'http://localhost:3000';
 
 function parseOrigin(value?: string | null) {
@@ -30,7 +29,7 @@ function getAllowedOrigins(env: Env): Set<string> {
 	const origins = new Set<string>();
 	const baseOrigin = parseOrigin(env.BASE_URL);
 	if (baseOrigin) origins.add(baseOrigin);
-	const frontendFromEnv = parseOrigin((env as { FRONTEND_URL?: string }).FRONTEND_URL);
+	const frontendFromEnv = parseOrigin(env.FRONTEND_URL);
 	if (frontendFromEnv) origins.add(frontendFromEnv);
 	origins.add(DEV_FRONTEND_ORIGIN);
 	return origins;
@@ -117,6 +116,11 @@ export default {
 				const auth = createAuth(env, request.cf as any);
 				const authResponse = await auth.handler(request);
 				return withCorsHeaders(authResponse, corsHeaders);
+			}
+
+			// Skip auth for static assets like favicon
+			if (url.pathname === '/favicon.ico' || url.pathname.startsWith('/static/')) {
+				return new Response(null, { status: 404, headers: corsHeaders });
 			}
 
 		const { error, user } = await requireAuth(request, env);
