@@ -68,6 +68,24 @@ Or connect your Git repository to Cloudflare Pages for automatic deployments.
 - **Environment variables**: 
   - `NEXT_PUBLIC_API_URL`: Your deployed worker URL (e.g., `https://my-first-worker.your-subdomain.workers.dev`)
 
+## Environment
+
+Create one of the following files in `chat-frontend/` to configure the backend endpoint:
+
+- `.env.development` (used during `pnpm dev`):
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8787
+```
+
+- `.env.production` (used for production builds):
+
+```env
+NEXT_PUBLIC_API_URL=https://my-first-worker-production.applyo.workers.dev
+```
+
+Alternatively, you can set `NEXT_PUBLIC_API_URL` in your deployment provider's environment settings.
+
 ## Project Structure
 
 ```

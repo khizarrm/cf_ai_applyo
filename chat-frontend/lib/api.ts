@@ -1,4 +1,8 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8787';
+export const API_URL = 'https://my-first-worker.applyo.workers.dev'
+  // process.env.NEXT_PUBLIC_API_URL ||
+  // (process.env.NODE_ENV === 'development'
+  //   ? 'http://localhost:8787'
+  //   : 'https://my-first-worker-production.applyo.workers.dev');
 
 export interface Chat {
   id: string;
@@ -20,15 +24,29 @@ export interface ChatWithMessages {
   messages: Message[];
 }
 
-export async function createChat(userId: string, title?: string): Promise<Chat> {
-  const response = await fetch(`${API_URL}/chat/start`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ user_id: userId, title }),
+export async function fetchJson(input: RequestInfo | URL, init: RequestInit = {}) {
+  const response = await fetch(input, {
+    ...init,
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(init.headers || {}),
+    },
   });
-  
-  if (!response.ok) throw new Error('Failed to create chat');
-  const data = await response.json();
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || 'Request failed');
+  }
+
+  return response.json();
+}
+
+export async function createChat(title?: string): Promise<Chat> {
+  const data = await fetchJson(`${API_URL}/chat/start`, {
+    method: 'POST',
+    body: JSON.stringify({ title }),
+  });
   return {
     id: data.chat_id,
     user_id: data.user_id,
@@ -38,32 +56,29 @@ export async function createChat(userId: string, title?: string): Promise<Chat> 
 }
 
 export async function sendMessage(chatId: string, content: string): Promise<{ user_message: Message; assistant_message: Message | null }> {
-  const response = await fetch(`${API_URL}/chat/${chatId}/message`, {
+  return fetchJson(`${API_URL}/chat/${chatId}/message`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ role: 'user', content }),
   });
-  
-  if (!response.ok) throw new Error('Failed to send message');
-  return response.json();
 }
 
 export async function getChatHistory(chatId: string): Promise<ChatWithMessages> {
-  const response = await fetch(`${API_URL}/chat/${chatId}`);
-  if (!response.ok) throw new Error('Failed to get chat history');
-  return response.json();
+  return fetchJson(`${API_URL}/chat/${chatId}`);
 }
 
-export async function listChats(userId: string, page = 1): Promise<{ chats: Chat[]; pagination: any }> {
-  const response = await fetch(`${API_URL}/chats?user_id=${userId}&page=${page}`);
-  if (!response.ok) throw new Error('Failed to list chats');
-  return response.json();
+export async function listChats(page = 1): Promise<{ chats: Chat[]; pagination: any }> {
+  return fetchJson(`${API_URL}/chats?page=${page}`);
 }
 
 export async function deleteChat(chatId: string): Promise<void> {
-  const response = await fetch(`${API_URL}/chat/${chatId}`, {
+  await fetchJson(`${API_URL}/chat/${chatId}`, {
     method: 'DELETE',
   });
-  if (!response.ok) throw new Error('Failed to delete chat');
+}
+
+export async function getSession() {
+  return fetchJson(`${API_URL}/api/auth/session`, {
+    method: 'GET',
+  });
 }
 
