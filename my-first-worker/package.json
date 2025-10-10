@@ -16,6 +16,7 @@
 		"wrangler": "^4.42.1"
 	},
 	"dependencies": {
-		"agents": "^0.2.9"
+		"agents": "^0.2.9",
+		"better-auth-cloudflare": "^0.2.7"
 	}
 }

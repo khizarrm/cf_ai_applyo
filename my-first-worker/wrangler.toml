@@ -1,0 +1,16 @@
+name = "my-first-worker"
+main = "src/index.ts"
+compatibility_date = "2025-10-08"
+compatibility_flags = ["global_fetch_strictly_public"]
+
+[assets]
+directory = "./public"
+
+[observability]
+enabled = true
+
+[[d1_databases]]
+binding = "applyo"
+database_name = "applyo"
+database_id = "f1c25a1c-ba2f-46e7-89f4-a6d632690141"
+
