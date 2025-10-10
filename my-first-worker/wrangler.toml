@@ -14,3 +14,13 @@ binding = "applyo"
 database_name = "applyo"
 database_id = "f1c25a1c-ba2f-46e7-89f4-a6d632690141"
 
+# Environment Variables
+# For local dev: use .dev.vars file
+# For production: set these values here or use secrets
+[vars]
+BASE_URL = "https://my-first-worker.applyo.workers.dev"
+GOOGLE_CLIENT_ID = "620539165749-9aifakkihtubb4fqeqjjh9jf4596dqc7.apps.googleusercontent.com"
+
+# For production secrets, use: wrangler secret put GOOGLE_CLIENT_SECRET
+# This keeps sensitive values out of version control
+

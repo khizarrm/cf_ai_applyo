@@ -7,6 +7,9 @@ declare namespace Cloudflare {
 	}
 	interface Env {
 		applyo: D1Database;
+		BASE_URL: string;
+		GOOGLE_CLIENT_ID: string;
+		GOOGLE_CLIENT_SECRET: string;
 	}
 }
 interface Env extends Cloudflare.Env {}

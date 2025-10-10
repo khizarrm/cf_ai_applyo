@@ -11,6 +11,9 @@ function createAuth(env? : Env, cf?: IncomingRequestCfProperties) {
     const db = env ? drizzle(env.applyo, { schema, logger: true }) : ({} as any);
 
     return betterAuth({
+        // Base URL for OAuth redirects
+        baseURL: env?.BASE_URL || "http://localhost:8787",
+        
         ...withCloudflare(
             {
                 autoDetectIpAddress: true,
@@ -29,6 +32,12 @@ function createAuth(env? : Env, cf?: IncomingRequestCfProperties) {
             {
                 emailAndPassword: {
                     enabled: true,
+                },
+                socialProviders: {
+                    google: {
+                        clientId: env?.GOOGLE_CLIENT_ID || "",
+                        clientSecret: env?.GOOGLE_CLIENT_SECRET || "",
+                    },
                 },
                 rateLimit: {
                     enabled: true,

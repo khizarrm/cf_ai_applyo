@@ -8,14 +8,18 @@ import { users, sessions, accounts, verifications } from "./auth.schema";
 // Application tables
 export const chats = sqliteTable("chats", {
 	id: text("id").primaryKey(),
-	userId: text("user_id"),
+	userId: text("user_id")
+		.notNull()
+		.references(() => users.id, { onDelete: "cascade" }),
 	title: text("title"),
 	createdAt: text("created_at").default(sql`CURRENT_TIMESTAMP`),
 });
 
 export const messages = sqliteTable("messages", {
 	id: text("id").primaryKey(),
-	chatId: text("chat_id").notNull(),
+	chatId: text("chat_id")
+		.notNull()
+		.references(() => chats.id, { onDelete: "cascade" }),
 	role: text("role"),
 	content: text("content"),
 	createdAt: text("created_at").default(sql`CURRENT_TIMESTAMP`),
