@@ -1,6 +1,9 @@
-import * as authSchema from "./auth.schema";
 import { sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
+
+// Re-export Better Auth tables so Drizzle Kit can detect them
+export { users, sessions, accounts, verifications } from "./auth.schema";
+import { users, sessions, accounts, verifications } from "./auth.schema";
 
 // Application tables
 export const chats = sqliteTable("chats", {
@@ -18,9 +21,12 @@ export const messages = sqliteTable("messages", {
 	createdAt: text("created_at").default(sql`CURRENT_TIMESTAMP`),
 });
 
-// Merge everything for migrations
+// Schema object for runtime usage (used by db/index.ts)
 export const schema = {
-	...authSchema,
+	users,
+	sessions,
+	accounts,
+	verifications,
 	chats,
 	messages,
 } as const;
