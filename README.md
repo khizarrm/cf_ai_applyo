@@ -6,12 +6,18 @@ Applyo streamlines the internship search process by automatically finding releva
 
 > 🚧 **Status:** Work in Progress — This project is being developed as part of a Cloudflare internship application.
 
+## 📐 Backend Architecture Diagram
+
+![Backend Architecture](./backend.png)
+
+The backend is built with Cloudflare Workers and follows a clean, modular architecture with endpoints organized by domain.
+
 ## 🏗️ Architecture
 
 Full-stack application with:
 
 - **`chat-frontend/`** - Next.js 15 frontend with Vercel AI SDK components
-- **`my-first-worker/`** - Cloudflare Workers backend with D1 database
+- **`applyo-worker/`** - Cloudflare Workers backend with D1 database
 
 Key infrastructure:
 - ⚡ **Cloudflare Workers** - Serverless API backend
@@ -66,7 +72,7 @@ Key infrastructure:
 
 2. **Set up the backend:**
    ```bash
-   cd my-first-worker
+   cd applyo-worker
    npm install
    
    # Create .dev.vars file with required secrets
@@ -115,11 +121,11 @@ applyo/
 │       ├── auth-client.ts # Better Auth client
 │       └── utils.ts       # Helper functions
 │
-└── my-first-worker/        # Cloudflare Worker backend
+└── applyo-worker/         # Cloudflare Worker backend
     ├── src/
     │   ├── auth/          # Better Auth configuration
     │   ├── db/            # Database schemas and config
-    │   ├── middleware/    # Auth middleware
+    │   ├── endpoints/     # API endpoint handlers
     │   └── index.ts       # Main worker entry point
     ├── drizzle/           # Database migrations
     └── wrangler.toml      # Worker configuration
@@ -129,7 +135,7 @@ applyo/
 
 ### Environment Variables
 
-Create a `.dev.vars` file in `my-first-worker/`:
+Create a `.dev.vars` file in `applyo-worker/`:
 
 ```env
 BETTER_AUTH_SECRET=your-secret-key-here
@@ -194,7 +200,7 @@ Create a `.env.local` file in `chat-frontend/`:
 NEXT_PUBLIC_API_URL=http://localhost:8787
 
 # Production
-# NEXT_PUBLIC_API_URL=https://my-first-worker.your-subdomain.workers.dev
+# NEXT_PUBLIC_API_URL=https://applyo-worker.your-subdomain.workers.dev
 ```
 
 ### Frontend Features
@@ -217,7 +223,7 @@ The chat interface uses Vercel AI SDK's streaming components for real-time AI re
 
 1. **Set up D1 database:**
    ```bash
-   cd my-first-worker
+   cd applyo-worker
    wrangler d1 create applyo
    # Update database_id in wrangler.toml
    ```
@@ -279,13 +285,13 @@ Better Auth handles session management, cookies, and user data automatically.
 
 ### Backend Tests
 ```bash
-cd my-first-worker
+cd applyo-worker
 npm test
 ```
 
 ## 📝 Development Scripts
 
-### Backend (my-first-worker)
+### Backend (applyo-worker)
 - `npm run dev` - Start development server
 - `npm run deploy` - Deploy to Cloudflare
 - `npm test` - Run tests
@@ -327,7 +333,7 @@ npm test
 
 - [Frontend README](./chat-frontend/README.md)
 - [Frontend Deployment Guide](./chat-frontend/DEPLOYMENT.md)
-- [Backend Development Guide](./my-first-worker/CLAUDE.md)
+- [Backend Development Guide](./applyo-worker/README.md)
 
 ## 🤝 Contributing
 

@@ -1,0 +1,34 @@
+---
+description: "Prompts Tracking Rule
+
+Purpose: Log significant user prompts in PROMPTS.md for transparency.
+
+Update PROMPTS.md when prompts:
+- Debug complex issues (architecture, env-specific, multi-layer)
+- Require doc research
+- Challenge assumptions (root cause, “how it’s meant to be”)
+- Seek implementation understanding (“how does X work”)
+- Trace system behavior (logs/errors to code paths)
+
+Do NOT track:
+- Simple how-tos
+- Basic syntax
+- Direct implementation (“make a button”)
+- Casual chat without technical depth
+
+Format:
+## [Category]
+```
+[exact user prompt]
+```
+Categories: Environment & Configuration, Understanding Implementation, Debugging, Root Cause Analysis, Architecture & Design, Documentation Research
+
+Process:
+- Add significant prompts during/after sessions
+- Use exact wording (typos OK)
+- Only the prompt in code block
+- No explanations or outcomes
+- Prioritize quality over quantity"
+globs:
+alwaysApply: true
+---
