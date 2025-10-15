@@ -5,12 +5,14 @@ import { cors } from "hono/cors";
 import { createAuth } from "./auth";
 import type { CloudflareBindings } from "./env.d";
 import Prospects from "./agents/prospector";
+import Profiler from "./agents/profiler";
 import { Agent, AgentNamespace, getAgentByName, routeAgentRequest } from 'agents';
 import { z } from "zod";
 
 
 interface Env {
   Prospects: AgentNamespace<Prospects>;
+  Profiler: AgentNamespace<Profiler>;
 }
 
 type Variables = {
@@ -43,7 +45,7 @@ Protected endpoints are marked with a 🔒 badge and require you to be logged in
 app.use(
     "/api/auth/**",
     cors({
-        origin: "*", // In production, replace with your actual domain
+        origin: "http://localhost:3000", // In production, replace with your actual domain
         allowHeaders: ["Content-Type", "Authorization"],
         allowMethods: ["POST", "GET", "OPTIONS"],
         exposeHeaders: ["Content-Length"],
@@ -95,6 +97,66 @@ class PublicHelloRoute extends OpenAPIRoute {
             timestamp: new Date().toISOString(),
             authenticated: false,
         };
+    }
+}
+
+class ProfilerRoute extends OpenAPIRoute {
+    schema = {
+      tags: ["Agents"],
+      summary: "Call Profiler Agent",
+      description: "Proxy request to the Profiler Agent (Cloudflare Agent)",
+      request: {
+        body: {
+          content: {
+            "application/json": {
+              schema: z.object({
+                resume: z.string().min(1).describe("Resume text to analyze"),
+              }),
+            },
+          },
+        },
+      },
+      responses: {
+        "200": {
+          description: "Agent response",
+          content: {
+            "application/json": {
+              schema: z.object({
+                message: z.string().optional(),
+                result: z.any().optional(),
+                state: z.any().optional(),
+              }),
+            },
+          },
+        },
+      },
+    };
+
+    async handle(c: any) {
+      const env = c.env as Env;
+      const auth = c.get("auth");
+
+      // Require authentication
+      const session = await auth.api.getSession({ headers: c.req.raw.headers });
+      if (!session?.session || !session?.user) {
+        return Response.json(
+          { error: "Unauthorized", message: "Please login first" },
+          { status: 401 }
+        );
+      }
+      const reqData = await this.getValidatedData<typeof this.schema>();
+      const body = JSON.stringify(reqData.body);
+
+      const agent = await getAgentByName(env.Profiler, "main");
+      const resp = await agent.fetch(
+        new Request("http://internal", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body,
+        })
+      );
+
+      return resp;
     }
 }
 
@@ -164,6 +226,16 @@ class ProspectorRoute extends OpenAPIRoute {
   
     async handle(c: any) {
       const env = c.env;
+      const auth = c.get("auth");
+
+      // Require authentication
+      const session = await auth.api.getSession({ headers: c.req.raw.headers });
+      if (!session?.session || !session?.user) {
+        return Response.json(
+          { error: "Unauthorized", message: "Please login first" },
+          { status: 401 }
+        );
+      }
       const reqData = await this.getValidatedData<typeof this.schema>();
       const body = JSON.stringify(reqData.body);
   
@@ -488,6 +560,7 @@ openapi.post("/api/protected/items", ProtectedCreateItemRoute);
 openapi.get("/api/protected/items", ProtectedListItemsRoute);
 openapi.delete("/api/protected/items/:id", ProtectedDeleteItemRoute);
 openapi.post("/api/agents/prospects", ProspectorRoute);
+openapi.post("/api/agents/profiler", ProfilerRoute);
 
 
 // ============= END DEMO API ROUTES =============
@@ -901,12 +974,10 @@ app.get("/health", c => {
 export default {
     async fetch(request, env, ctx) {
       // First let Cloudflare handle any /agents/... requests automatically
-      const agentResponse = await routeAgentRequest(request, env);
+      const agentResponse = await routeAgentRequest(request, env)
       if (agentResponse) return agentResponse;
-  
-      // Otherwise fall back to your Hono app (Swagger, auth, etc.)
       return openapi.fetch(request, env, ctx);
     }
   };
 
-export { Prospects }; 
+export { Prospects, Profiler }; 

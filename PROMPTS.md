@@ -724,3 +724,9 @@ Contributions are welcome! Whether it's bug fixes, feature additions, or documen
 ````
 
 can u find the limitations of how we implemented bettrauth, and suggest a plan to do it the right way according to these docs? do not make any changes, come up with a plan and present it to me first. if i approve, you may code.
+make an api client in the frontend. first, check out how the auth is implemented in the backend, we're currently using better auth. i've already implemented the auth ui in the backend (dashboard page). i need you to just replicate this in the frontend so users can be authenticated from there too. 
+
+in the api client file you make, the base url should be 'https://applyo-worker.applyo.workers.dev'
+
+
+im calling the get session api of better auth from my frontend, but its not working, i get cors issues, do i have to add somethign to better auth like give permissiosn to recieve this from frontend? read the docs and lmk. confirm it based off evidence, do not assume:

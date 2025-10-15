@@ -13,6 +13,7 @@ function createAuth(env?: CloudflareBindings, cf?: IncomingRequestCfProperties) 
     const db = env?.DB ? drizzle(env.DB, { schema, logger: true }) : ({} as any);
 
     return betterAuth({
+        trustedOrigins: ["http://localhost:3000"], 
         ...withCloudflare(
             {
                 autoDetectIpAddress: true,

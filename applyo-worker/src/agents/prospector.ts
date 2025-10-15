@@ -1,10 +1,8 @@
 //finds companies as well as contacts
 
 import { Agent } from "agents";
-
-interface Env {
-
-}
+import { openai } from "@ai-sdk/openai"
+const model = openai("gpt-4o-2024-11-20");
 
 interface State {
   companiesFound: number;
@@ -26,7 +24,6 @@ class Prospects extends Agent {
   }
 
   async onRequest(_request: Request): Promise<Response> {
-    // Return the current state of the agent
     return new Response(
       JSON.stringify({
         message: "Prospector agent is running",

@@ -20,6 +20,14 @@ remote = true
 name = "Prospects"
 class_name = "Prospects"
 
+[[durable_objects.bindings]]
+name = "Profiler"
+class_name = "Profiler"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["Prospects"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["Profiler"]
