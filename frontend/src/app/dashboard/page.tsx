@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { auth, type User, type GeolocationData } from '@/lib/api';
 import { authClient } from '@/lib/auth-client';
+import ResumeUpload from '@/components/ResumeUpload';
 
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -150,6 +151,9 @@ export default function DashboardPage() {
             </div>
           </div>
         )}
+
+        {/* Resume Upload */}
+        <ResumeUpload />
 
         {/* Quick Links */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
