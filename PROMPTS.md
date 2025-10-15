@@ -730,3 +730,15 @@ in the api client file you make, the base url should be 'https://applyo-worker.a
 
 
 im calling the get session api of better auth from my frontend, but its not working, i get cors issues, do i have to add somethign to better auth like give permissiosn to recieve this from frontend? read the docs and lmk. confirm it based off evidence, do not assume:
+
+
+
+in the frontend, i need you to make a button to upload a file (which will be the users resume). use the add-input shadcn component i just installed. 
+
+we'll use pdf parse to extract everything from the file, and save that.
+
+in the backend, we have a profiler agent which takes in a resume as a string. we'll send it to there, and whatever the response is, we'll display it in the frontend. come up with a good plan for this. break it up into 2 phases: phase 1 is just extracting the text, and phase 2 would be sending it and displaying the response in the frontend. 
+
+come up with a plan, and present it to me. dont code before i approve. 
+
+

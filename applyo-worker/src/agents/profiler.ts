@@ -2,7 +2,7 @@
 
 import { Agent } from "agents";
 import { createOpenAI } from "@ai-sdk/openai";
-import { convertToModelMessages, generateText } from "ai"
+import { generateText } from "ai"
 
 class Profiler extends Agent {
   initialState = {
@@ -21,12 +21,12 @@ class Profiler extends Agent {
     const model = openai("gpt-4o-mini");
 
     // Parse the request body to get the resume text
-    const body = await request.json();
-    const resumeText = body.resume || "";
+    const body = (await request.json()) as { resume?: string };
+    const resumeText = body?.resume ?? "";
 
     const result = await generateText({
         model,
-        system: "You take in as input text from a resume and summarize it into ~300 words.", 
+        system: "You take in as input text from a resume and summarize it into ~300 words, returning the summary as a json.", 
         messages: [
           {
             role: "user",
