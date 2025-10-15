@@ -1,8 +1,9 @@
-import type { D1Database, KVNamespace } from "@cloudflare/workers-types";
+import type { D1Database, KVNamespace, DurableObjectNamespace } from "@cloudflare/workers-types";
 
 export interface CloudflareBindings {
     DB: D1Database;
     KV?: KVNamespace;
+    Prospects: AgentNamespace<Prospects>;
 }
 
 declare global {

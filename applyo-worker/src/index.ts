@@ -4,7 +4,14 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { createAuth } from "./auth";
 import type { CloudflareBindings } from "./env.d";
+import Prospects from "./agents/prospector";
+import { Agent, AgentNamespace, getAgentByName, routeAgentRequest } from 'agents';
 import { z } from "zod";
+
+
+interface Env {
+  Prospects: AgentNamespace<Prospects>;
+}
 
 type Variables = {
     auth: ReturnType<typeof createAuth>;
@@ -123,6 +130,56 @@ class PublicInfoRoute extends OpenAPIRoute {
         };
     }
 }
+
+class ProspectorRoute extends OpenAPIRoute {
+    schema = {
+      tags: ["Agents"],
+      summary: "Call Prospects Agent",
+      description: "Proxy request to the Prospects Agent (Cloudflare Agent)",
+      request: {
+        body: {
+          content: {
+            "application/json": {
+              schema: z.object({
+                query: z.string(),
+              }),
+            },
+          },
+        },
+      },
+      responses: {
+        "200": {
+          description: "Agent response",
+          content: {
+            "application/json": {
+              schema: z.object({
+                message: z.string().optional(),
+                result: z.any().optional(),
+              }),
+            },
+          },
+        },
+      },
+    };
+  
+    async handle(c: any) {
+      const env = c.env;
+      const reqData = await this.getValidatedData<typeof this.schema>();
+      const body = JSON.stringify(reqData.body);
+  
+      // manually call the agent
+      const agent = await getAgentByName(env.Prospects, "main");
+      const resp = await agent.fetch(
+        new Request("http://internal", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body,
+        })
+      );
+  
+      return resp;
+    }
+  }
 
 // Protected Profile Route
 class ProtectedProfileRoute extends OpenAPIRoute {
@@ -430,6 +487,8 @@ openapi.get("/api/protected/profile", ProtectedProfileRoute);
 openapi.post("/api/protected/items", ProtectedCreateItemRoute);
 openapi.get("/api/protected/items", ProtectedListItemsRoute);
 openapi.delete("/api/protected/items/:id", ProtectedDeleteItemRoute);
+openapi.post("/api/agents/prospects", ProspectorRoute);
+
 
 // ============= END DEMO API ROUTES =============
 
@@ -832,10 +891,22 @@ app.get("/protected", async c => {
         );
     }
 });
+  
 
 // Simple health check
 app.get("/health", c => {
     return c.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-export default openapi;
+export default {
+    async fetch(request, env, ctx) {
+      // First let Cloudflare handle any /agents/... requests automatically
+      const agentResponse = await routeAgentRequest(request, env);
+      if (agentResponse) return agentResponse;
+  
+      // Otherwise fall back to your Hono app (Swagger, auth, etc.)
+      return openapi.fetch(request, env, ctx);
+    }
+  };
+
+export { Prospects }; 
