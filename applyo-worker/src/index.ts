@@ -203,7 +203,8 @@ class ProspectorRoute extends OpenAPIRoute {
           content: {
             "application/json": {
               schema: z.object({
-                query: z.string(),
+                summary: z.string().describe("Professional summary describing the user's background, interests, and skills"),
+                preferences: z.string().optional().describe("Additional work preferences and requirements"),
               }),
             },
           },
@@ -226,16 +227,7 @@ class ProspectorRoute extends OpenAPIRoute {
   
     async handle(c: any) {
       const env = c.env;
-      const auth = c.get("auth");
 
-      // Require authentication
-      const session = await auth.api.getSession({ headers: c.req.raw.headers });
-      if (!session?.session || !session?.user) {
-        return Response.json(
-          { error: "Unauthorized", message: "Please login first" },
-          { status: 401 }
-        );
-      }
       const reqData = await this.getValidatedData<typeof this.schema>();
       const body = JSON.stringify(reqData.body);
   

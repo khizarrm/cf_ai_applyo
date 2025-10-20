@@ -31,3 +31,6 @@ new_sqlite_classes = ["Prospects"]
 [[migrations]]
 tag = "v2"
 new_sqlite_classes = ["Profiler"]
+
+# Secrets (use `wrangler secret put TAVILY_API_KEY` to set)
+# TAVILY_API_KEY = "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"

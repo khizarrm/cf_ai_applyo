@@ -4,6 +4,7 @@ export interface CloudflareBindings {
     DB: D1Database;
     KV?: KVNamespace;
     Prospects: AgentNamespace<Prospects>;
+    TAVILY_API_KEY: string;
 }
 
 declare global {
