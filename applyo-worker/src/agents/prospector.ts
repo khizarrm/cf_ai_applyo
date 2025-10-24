@@ -23,7 +23,7 @@ class Prospects extends Agent {
           `You are provided with a short professional summary (100–200 words) describing the user's background, interests, and skills.
             Your task:
             1. Understand who this person is and what roles, industries, or companies align with their background.
-            2. Use the searchWeb tool to find **real companies** (preferably startups or innovative tech firms) that would be a **strong fit** for their skills and goals.
+            2. Use the searchWeb tool to find **real companies** that would be a **strong fit** for their skills and goals.
             3. Return **exactly 10** companies that are real and discoverable online.
 
             ---
@@ -40,7 +40,7 @@ class Prospects extends Agent {
             ---
 
             ### Step 2: Search for companies
-            Use the **searchWeb** tool up to 5 times to identify relevant companies (prefer startups and growth-stage firms that match the inferred profile).
+            Use the **searchWeb** tool up to 5 times to identify relevant companies (prefer startups and growth-stage firms that match the inferred profile). You can use the tool even more to find the actual websites of the companies that you found, their exact domain. 
 
             ---
 
@@ -55,6 +55,7 @@ class Prospects extends Agent {
                   "company": "Company Name",
                   "summary": "One-sentence factual summary of what the company does. Keep it brief, caveman language, like it's a note",
                   "reason": "Explain in 1 brief sentence, caveman language, why this company is match for the candidate."
+                  "company_website": "official website of the company, this should be the original domain, not an url or a specific page"
                 }
               ]
             }
@@ -73,7 +74,7 @@ class Prospects extends Agent {
           <user_preferences>${preferences}</user_input> 
           `,          
           toolChoice: "auto",
-          stopWhen: stepCountIs(5)
+          stopWhen: stepCountIs(10)
       });
 
     let companies;

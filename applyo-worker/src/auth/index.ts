@@ -13,7 +13,18 @@ function createAuth(env?: CloudflareBindings, cf?: IncomingRequestCfProperties) 
     const db = env?.DB ? drizzle(env.DB, { schema, logger: true }) : ({} as any);
 
     return betterAuth({
-        trustedOrigins: ["http://localhost:3000"], 
+        trustedOrigins: [
+            "http://localhost:3000",
+            "http://localhost:3001",
+            "https://applyo-frontend.applyo.workers.dev"
+        ],
+        advanced: {
+            defaultCookieAttributes: {
+                sameSite: "none",
+                secure: true,
+                partitioned: true // New browser standards will mandate this for foreign cookies
+            }
+        },
         ...withCloudflare(
             {
                 autoDetectIpAddress: true,

@@ -21,6 +21,26 @@ type Variables = {
 
 const app = new Hono<{ Bindings: CloudflareBindings; Variables: Variables }>();
 
+// Global CORS configuration for all routes
+app.use(
+    "*",
+    cors({
+        origin: (origin) => {
+            const allowed = [
+                "http://localhost:3000",
+                "http://localhost:3001",
+                "https://applyo-frontend.applyo.workers.dev"
+            ];
+            return allowed.includes(origin) || /^http:\/\/localhost:\d+$/.test(origin) ? origin : allowed[0];
+        },
+        allowHeaders: ["Content-Type", "Authorization"],
+        allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+        exposeHeaders: ["Content-Length"],
+        maxAge: 600,
+        credentials: true,
+    })
+);
+
 // Create OpenAPI instance
 const openapi = fromHono(app, {
     docs_url: "/",
@@ -40,24 +60,6 @@ Protected endpoints are marked with a 🔒 badge and require you to be logged in
         },
     },
 });
-
-// CORS configuration for auth routes
-app.use(
-    "/api/auth/**",
-    cors({
-        origin: [
-            "http://localhost:3000",      // Next.js dev server
-            "http://localhost:3001",      // Cloudflare Workers preview (fixed port)
-            /^http:\/\/localhost:\d+$/,   // Any localhost port for development
-            "https://applyo-frontend.applyo.workers.dev",  // Production frontend URL
-        ],
-        allowHeaders: ["Content-Type", "Authorization"],
-        allowMethods: ["POST", "GET", "OPTIONS"],
-        exposeHeaders: ["Content-Length"],
-        maxAge: 600,
-        credentials: true,
-    })
-);
 
 // Middleware to initialize auth instance for each request
 app.use("*", async (c, next) => {
