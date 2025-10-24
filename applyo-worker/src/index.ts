@@ -971,7 +971,7 @@ app.get("/health", c => {
 export default {
     async fetch(request, env, ctx) {
       // First let Cloudflare handle any /agents/... requests automatically
-      const agentResponse = await routeAgentRequest(request, env, { cors: true })
+      const agentResponse = await routeAgentRequest(request, env)
       if (agentResponse) return agentResponse;
       return openapi.fetch(request, env, ctx);
     }
