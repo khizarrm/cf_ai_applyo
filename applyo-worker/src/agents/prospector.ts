@@ -1,6 +1,6 @@
 import { Agent } from "agents";
 import { openai } from "@ai-sdk/openai"
-import { generateText } from "ai";
+import { generateText, stepCountIs } from "ai";
 import { tools } from "../lib/tools";
 
 const model = openai("gpt-4o-2024-11-20");
@@ -45,7 +45,9 @@ class Prospects extends Agent {
             ---
 
             ### Step 3: Return structured JSON
-            Respond **only** with valid JSON in this structure:
+            **CRITICAL**: Respond with ONLY valid JSON. No markdown, no explanations, no code blocks.
+            
+            Return exactly this structure:
 
             {
               "companies": [
@@ -58,9 +60,11 @@ class Prospects extends Agent {
             }
 
             Rules:
-            - Include exactly 20 companies.
-            - Keep the reasoning clear and personal (“because your background in ___ aligns with their focus on ___”).
-            - Do not include markdown, explanations, or commentary outside the JSON.
+            - Include exactly 10 companies (not 20 as mentioned earlier).
+            - Keep the reasoning clear and personal ("because your background in ___ aligns with their focus on ___").
+            - Return ONLY the JSON object, nothing else.
+            - Do not wrap in markdown code blocks.
+            - Do not add any explanatory text before or after the JSON.
 
           <user_summary>${summary}</user_summary>
 
@@ -69,16 +73,36 @@ class Prospects extends Agent {
           <user_preferences>${preferences}</user_input> 
           `,          
           toolChoice: "auto",
-          maxSteps: 15
+          stopWhen: stepCountIs(5)
       });
-
-    console.log("RESPONSE:" , result)
 
     let companies;
     try {
-        companies = JSON.parse(result.text);
+        let cleanText = result.text.trim();
+        
+        // Remove markdown code blocks if present
+        if (cleanText.startsWith('```json')) {
+            cleanText = cleanText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+        } else if (cleanText.startsWith('```')) {
+            cleanText = cleanText.replace(/^```\s*/, '').replace(/\s*```$/, '');
+        }
+        
+        const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            cleanText = jsonMatch[0];
+        }
+        
+        console.log("Cleaned text for parsing:", cleanText);
+        companies = JSON.parse(cleanText);
     } catch (e) {
-        companies = { companies: [], error: "Failed to parse response" };
+        console.error("Failed to parse JSON:", e);
+        console.error("Raw text response:", result.text);
+        companies = { 
+            companies: [], 
+            error: "Failed to parse response", 
+            rawText: result.text,
+            parseError: e instanceof Error ? e.message : String(e)
+        };
     }
 
     return new Response(

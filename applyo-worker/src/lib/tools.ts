@@ -3,10 +3,9 @@ import { z } from "zod";
 
 export const searchWeb = tool({
     description: "Search the web for companies matching the user's criteria", 
-    parameters: z.object({
+    inputSchema: z.object({
         query: z.string().describe("Search query for finding companies")
     }),
-    
     execute: async ({ query }, options) => {
         const env = (options as any).env;
         const { tavily } = await import("@tavily/core");
