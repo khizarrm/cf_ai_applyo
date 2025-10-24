@@ -33,17 +33,12 @@ export async function onRequest(context: EventContext<Env, string, {}>) {
     // Forward the request directly to the bound worker
     const response = await env.APPLYO_WORKER.fetch(request);
     
-    // Create a new response with CORS headers
-    const corsResponse = new Response(response.body, {
-      status: response.status,
-      statusText: response.statusText,
-      headers: {
-        ...Object.fromEntries(response.headers.entries()),
-        ...corsHeaders,
-      },
+    // Add CORS headers to the existing response
+    Object.entries(corsHeaders).forEach(([key, value]) => {
+      response.headers.set(key, value);
     });
     
-    return corsResponse;
+    return response;
   } catch (error) {
     console.error('Error proxying to worker:', error);
     return new Response('Internal Server Error', { 
