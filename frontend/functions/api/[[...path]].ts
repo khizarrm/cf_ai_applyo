@@ -3,6 +3,8 @@
  * This handles all /api/* routes and forwards them to the bound worker
  */
 
+import type { Fetcher, EventContext } from '@cloudflare/workers-types';
+
 interface Env {
   APPLYO_WORKER: Fetcher;
 }
