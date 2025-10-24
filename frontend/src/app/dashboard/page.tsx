@@ -8,42 +8,39 @@ import ResumeUpload from '@/components/ResumeUpload';
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [geolocation, setGeolocation] = useState<GeolocationData | null>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { data: session, isPending } = authClient.useSession();
 
   useEffect(() => {
-    checkAuth();
-  }, [isPending, session]);
-
-  const checkAuth = async () => {
-    try {
-      if (isPending) return; 
-      const currentSession = session; 
-      console.log("got session: ", currentSession)
-
-      if (!currentSession) {
+    const loadUserData = async () => {
+      if (isPending) return; // Still loading session
+      
+      if (!session) {
+        // Session loading is complete and no session exists
         window.location.href = '/login';
         return;
       }
 
-      setUser({
-        id: currentSession.user.id,
-        email: currentSession.user.email ?? null,
-        name: currentSession.user.name ?? null,
-        createdAt: new Date(currentSession.user.createdAt as any).toISOString(),
-      });
+      try {
+        // Set user data from session
+        setUser({
+          id: session.user.id,
+          email: session.user.email ?? null,
+          name: session.user.name ?? null,
+          createdAt: new Date(session.user.createdAt as any).toISOString(),
+        });
 
-      // Fetch geolocation data
-      const geoData = await auth.getGeolocation();
-      setGeolocation(geoData);
-    } catch (err) {
-      setError('Failed to load user data');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+        // Fetch geolocation data
+        const geoData = await auth.getGeolocation();
+        setGeolocation(geoData);
+      } catch (err) {
+        setError('Failed to load user data');
+        console.error(err);
+      }
+    };
+
+    loadUserData();
+  }, [isPending, session]);
 
   const handleLogout = async () => {
     try {
@@ -54,7 +51,7 @@ export default function DashboardPage() {
     }
   };
 
-  if (loading || isPending) {
+  if (isPending) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">

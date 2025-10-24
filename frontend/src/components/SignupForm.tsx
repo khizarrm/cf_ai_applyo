@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { auth } from '@/lib/api';
+import { authClient } from '@/lib/auth-client';
 
 export default function SignupForm() {
   const [name, setName] = useState('');
@@ -25,16 +25,23 @@ export default function SignupForm() {
       return;
     }
 
-    setLoading(true);
-
-    try {
-      await auth.signUp(email, password, name);
-      window.location.href = '/dashboard';
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Sign up failed');
-    } finally {
-      setLoading(false);
-    }
+    await authClient.signUp.email({
+      email: email,
+      password: password,
+      name: name,
+      callbackURL: "/dashboard"
+    }, {
+      onRequest: () => {
+        setLoading(true);
+      },
+      onSuccess: () => {
+        window.location.href = '/dashboard';
+      },
+      onError: (ctx) => {
+        setError(ctx.error.message);
+        setLoading(false);
+      }
+    });
   };
 
   return (

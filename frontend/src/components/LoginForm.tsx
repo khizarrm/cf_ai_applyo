@@ -14,19 +14,22 @@ export default function LoginForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setLoading(true);
 
-    try {
-      await authClient.signIn.email({
-        email: email, 
-        password: password, 
-      })
-      window.location.href = '/dashboard';
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
-    } finally {
-      setLoading(false);
-    }
+    await authClient.signIn.email({
+      email: email, 
+      password: password, 
+    }, {
+      onRequest: () => {
+        setLoading(true);
+      },
+      onSuccess: () => {
+        window.location.href = '/dashboard';
+      },
+      onError: (ctx) => {
+        setError(ctx.error.message);
+        setLoading(false);
+      }
+    });
   };
 
   const handleAnonymousLogin = async () => {

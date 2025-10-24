@@ -1,12 +1,12 @@
 'use client';
 
-import { useAuth } from '@/contexts/AuthContext';
+import { authClient } from '@/lib/auth-client';
 import Link from 'next/link';
 
 export default function Home() {
-  const { user, loading } = useAuth();
+  const { data: session, isPending } = authClient.useSession();
 
-  if (loading) {
+  if (isPending) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
@@ -29,11 +29,11 @@ export default function Home() {
             Your intelligent job application tracking system powered by Better Auth and Cloudflare
           </p>
 
-          {user ? (
+          {session ? (
             <div className="space-y-4">
               <div className="bg-green-100 dark:bg-green-900 border border-green-300 dark:border-green-700 rounded-lg p-4 max-w-md mx-auto">
                 <p className="text-green-800 dark:text-green-100">
-                  ✅ Signed in as <strong>{user.email || 'Anonymous User'}</strong>
+                  ✅ Signed in as <strong>{session.user.email || 'Anonymous User'}</strong>
                 </p>
               </div>
               <div className="flex gap-4 justify-center">
