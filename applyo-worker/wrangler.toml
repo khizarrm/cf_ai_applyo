@@ -27,6 +27,10 @@ class_name = "Prospects"
 name = "Profiler"
 class_name = "Profiler"
 
+[[durable_objects.bindings]]
+name = "PeopleFinder"
+class_name = "PeopleFinder"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["Prospects"]
@@ -34,6 +38,10 @@ new_sqlite_classes = ["Prospects"]
 [[migrations]]
 tag = "v2"
 new_sqlite_classes = ["Profiler"]
+
+[[migrations]]
+tag = "v3"
+new_sqlite_classes = ["PeopleFinder"]
 
 # Secrets (use `wrangler secret put TAVILY_API_KEY` to set)
 # TAVILY_API_KEY = "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"

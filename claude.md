@@ -1,4 +1,3 @@
-
 # claude.md — Evidence-Based Planning Mode
 
 ## Core Directives
@@ -18,11 +17,12 @@
 ## Process
 1. **Identify issue**
    - what’s broken / unclear  
-   - show supporting proof  
+   - show supporting proof, eith evidence 
 
 2. **Analyze root**
    - state cause, not symptom  
-   - if uncertain → request confirmation  
+   - do research on the codebase, if you still have not enough info do research using the web 
+   - if uncertain → still unrequest confirmation  
 
 3. **Propose fix**
    - concise, 1–2 lines per action  

@@ -6,6 +6,7 @@ import { createAuth } from "./auth";
 import type { CloudflareBindings } from "./env.d";
 import Prospects from "./agents/prospector";
 import Profiler from "./agents/profiler";
+import PeopleFinder from "./agents/peoplefinder";
 import { Agent, AgentNamespace, getAgentByName, routeAgentRequest } from 'agents';
 import { z } from "zod";
 
@@ -13,6 +14,7 @@ import { z } from "zod";
 interface Env {
   Prospects: AgentNamespace<Prospects>;
   Profiler: AgentNamespace<Profiler>;
+  PeopleFinder: AgentNamespace<PeopleFinder>;
 }
 
 type Variables = {
@@ -231,13 +233,13 @@ class ProspectorRoute extends OpenAPIRoute {
         },
       },
     };
-  
+
     async handle(c: any) {
       const env = c.env;
 
       const reqData = await this.getValidatedData<typeof this.schema>();
       const body = JSON.stringify(reqData.body);
-  
+
       // manually call the agent
       const agent = await getAgentByName(env.Prospects, "main");
       const resp = await agent.fetch(
@@ -247,7 +249,66 @@ class ProspectorRoute extends OpenAPIRoute {
           body,
         })
       );
-  
+
+      return resp;
+    }
+  }
+
+class PeopleFinderRoute extends OpenAPIRoute {
+    schema = {
+      tags: ["Agents"],
+      summary: "Call PeopleFinder Agent",
+      description: "Find high-ranking individuals at a company using the PeopleFinder Agent",
+      request: {
+        body: {
+          content: {
+            "application/json": {
+              schema: z.object({
+                company: z.string().min(1).describe("Company name to search for people"),
+                website: z.string().optional().describe("Company website URL (optional, helps with more accurate searches)"),
+              }),
+            },
+          },
+        },
+      },
+      responses: {
+        "200": {
+          description: "Agent response with 3 high-ranking individuals",
+          content: {
+            "application/json": {
+              schema: z.object({
+                people: z.array(
+                  z.object({
+                    name: z.string(),
+                    role: z.string(),
+                    company: z.string(),
+                  })
+                ).optional(),
+                state: z.any().optional(),
+                error: z.string().optional(),
+              }),
+            },
+          },
+        },
+      },
+    };
+
+    async handle(c: any) {
+      const env = c.env;
+
+      const reqData = await this.getValidatedData<typeof this.schema>();
+      const body = JSON.stringify(reqData.body);
+
+      // manually call the agent
+      const agent = await getAgentByName(env.PeopleFinder, "main");
+      const resp = await agent.fetch(
+        new Request("http://internal", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body,
+        })
+      );
+
       return resp;
     }
   }
@@ -560,6 +621,7 @@ openapi.get("/api/protected/items", ProtectedListItemsRoute);
 openapi.delete("/api/protected/items/:id", ProtectedDeleteItemRoute);
 openapi.post("/api/agents/prospects", ProspectorRoute);
 openapi.post("/api/agents/profiler", ProfilerRoute);
+openapi.post("/api/agents/peoplefinder", PeopleFinderRoute);
 
 
 // ============= END DEMO API ROUTES =============
@@ -979,4 +1041,4 @@ export default {
     }
   };
 
-export { Prospects, Profiler }; 
+export { Prospects, Profiler, PeopleFinder }; 
