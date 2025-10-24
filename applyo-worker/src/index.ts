@@ -214,6 +214,7 @@ class ProspectorRoute extends OpenAPIRoute {
               schema: z.object({
                 summary: z.string().describe("Professional summary describing the user's background, interests, and skills"),
                 preferences: z.string().optional().describe("Additional work preferences and requirements"),
+                location: z.string().optional().describe("Geographic location or region for contextualizing company search"),
               }),
             },
           },

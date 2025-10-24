@@ -12,9 +12,10 @@ class Prospects extends Agent {
   }
 
   async onRequest(_request: Request): Promise<Response> {
-      const body = await _request.json() as { summary?: string; preferences?: string };
+      const body = await _request.json() as { summary?: string; preferences?: string; location?: string };
       const summary = body.summary || "";
-      const preferences = body.preferences || ""; 
+      const preferences = body.preferences || "";
+      const location = body.location || ""; 
 
       const result = await generateText({
           model,
@@ -34,13 +35,14 @@ class Prospects extends Agent {
             - Likely roles (e.g. software engineer, AI researcher, product designer)
             - Preferred environments (e.g. startups, remote, research labs, design studios)
             - Possible industries (e.g. AI, fintech, edtech, SaaS)
+            ${location ? `- Location context: Consider industries and companies relevant to ${location} (e.g., tech hubs, regional specializations, local market characteristics)` : ''}
 
-            If the summary doesn’t specify something, make reasonable inferences based on context.
+            If the summary doesn't specify something, make reasonable inferences based on context.
 
             ---
 
             ### Step 2: Search for companies
-            Use the **searchWeb** tool up to 5 times to identify relevant companies (prefer startups and growth-stage firms that match the inferred profile). You can use the tool even more to find the actual websites of the companies that you found, their exact domain. 
+            Use the **searchWeb** tool up to 5 times to identify relevant companies (prefer startups and growth-stage firms that match the inferred profile). ${location ? `When searching, consider companies with presence or relevance in ${location}. Include location context in search queries where appropriate.` : ''} You can use the tool even more to find the actual websites of the companies that you found, their exact domain. 
 
             ---
 
