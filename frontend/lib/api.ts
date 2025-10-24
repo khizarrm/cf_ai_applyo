@@ -3,7 +3,7 @@
  * Handles authentication and API requests to the backend
  */
 
-const API_BASE_URL = 'http://localhost:8787';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8787';
 
 /**
  * Base fetch wrapper with credentials handling
@@ -13,6 +13,7 @@ async function apiFetch(
   options: RequestInit = {}
 ): Promise<Response> {
   const url = `${API_BASE_URL}${endpoint}`;
+  console.log("fetching: ", url)
 
   const defaultOptions: RequestInit = {
     credentials: 'include', 

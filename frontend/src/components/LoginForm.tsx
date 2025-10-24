@@ -22,10 +22,13 @@ export default function LoginForm() {
       onRequest: () => {
         setLoading(true);
       },
-      onSuccess: () => {
+      onSuccess: (response) => {
+        console.log('Success response:', response);
+        setLoading(false);
         window.location.href = '/dashboard';
       },
       onError: (ctx) => {
+        console.log('Error response:', ctx);
         setError(ctx.error.message);
         setLoading(false);
       }
