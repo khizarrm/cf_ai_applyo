@@ -16,24 +16,25 @@ The backend is built with Cloudflare Workers and follows a clean, modular archit
 
 Full-stack application with:
 
-- **`chat-frontend/`** - Next.js 15 frontend with Vercel AI SDK components
-- **`applyo-worker/`** - Cloudflare Workers backend with D1 database
+- **`frontend/`** - Next.js 15 frontend with Cloudflare deployment
+- **`applyo-worker/`** - Cloudflare Workers backend with intelligent agents
 
 Key infrastructure:
 - ⚡ **Cloudflare Workers** - Serverless API backend
-- 🗄️ **D1 Database** - SQLite at the edge with Drizzle ORM
-- 🌐 **Cloudflare Pages** - Frontend hosting
-- 🔐 **Better Auth** - Google OAuth authentication
-- 🤖 **Vercel AI SDK** - AI-powered UI elements and streaming
+- 🗄️ **Database** - SQLite with Drizzle ORM
+- 🌐 **Cloudflare Workers** - Frontend hosting via OpenNext
+- 🔐 **Better Auth** - Authentication system
+- 🤖 **AI Agents** - Intelligent automation agents
 
 ## ✨ Features (Planned & In Progress)
 
 ### Current Features
-- 🔐 **Google Sign-In** - One-click authentication with Better Auth
+- 🔐 **Authentication** - Email/password and anonymous sign-in with Better Auth
 - 👤 **User Management** - Secure session management and user profiles
-- 💬 **AI Chat Interface** - Built with Vercel AI SDK for streaming responses
-- 🗄️ **Database** - D1 (SQLite) with Drizzle ORM for type-safe queries
+- 🤖 **AI Agents** - Orchestrator, Profiler, Prospector, and Outreach agents
+- 🗄️ **Database** - SQLite with Drizzle ORM for type-safe queries
 - 🎨 **Modern UI** - Tailwind CSS and Radix UI components
+- 📁 **Resume Upload** - PDF resume processing and analysis
 
 ### Upcoming Features
 - 🏢 **Company Discovery** - AI-powered company matching based on user preferences
@@ -88,11 +89,11 @@ Key infrastructure:
 
 3. **Set up the frontend (in a new terminal):**
    ```bash
-   cd chat-frontend
+   cd frontend
    pnpm install
    
-   # Create .env.local file
-   echo "NEXT_PUBLIC_API_URL=http://localhost:8787" > .env.local
+   # Create .env.local file (or copy from .env.example)
+   cp .env.example .env.local
    
    # Start the development server
    pnpm dev
@@ -106,26 +107,38 @@ Key infrastructure:
 
 ```
 applyo/
-├── chat-frontend/           # Next.js frontend application
-│   ├── app/                # Next.js app directory
-│   │   ├── layout.tsx     # Root layout
-│   │   ├── page.tsx       # Main chat interface
-│   │   └── globals.css    # Global styles
-│   ├── components/        # React components
-│   │   ├── ai-elements/   # Chat UI components
-│   │   ├── auth/          # Authentication components
-│   │   ├── navbar/        # Navigation components
-│   │   └── ui/            # Reusable UI components
-│   └── lib/               # Utilities and API client
-│       ├── api.ts         # Chat API client
-│       ├── auth-client.ts # Better Auth client
-│       └── utils.ts       # Helper functions
+├── frontend/              # Next.js frontend application
+│   ├── src/               # Source code
+│   │   ├── app/          # Next.js app directory
+│   │   │   ├── layout.tsx     # Root layout
+│   │   │   ├── page.tsx       # Landing page
+│   │   │   ├── login/         # Login page
+│   │   │   ├── signup/        # Signup page
+│   │   │   └── dashboard/     # Dashboard page
+│   │   └── components/    # React components
+│   │       ├── LoginForm.tsx     # Login form
+│   │       ├── SignupForm.tsx    # Signup form
+│   │       ├── ResumeUpload.tsx  # Resume upload
+│   │       └── ui/               # Reusable UI components
+│   ├── lib/               # Utilities and API client
+│   │   ├── api.ts         # API client with all endpoints
+│   │   ├── auth-client.ts # Better Auth client
+│   │   └── utils.ts       # Helper functions
+│   ├── wrangler.toml      # Cloudflare deployment config
+│   ├── open-next.config.ts # OpenNext adapter config
+│   └── .env.example       # Environment variables template
 │
 └── applyo-worker/         # Cloudflare Worker backend
     ├── src/
+    │   ├── agents/        # AI automation agents
+    │   │   ├── orchestrator.ts  # Main orchestration agent
+    │   │   ├── profiler.ts      # User profiling agent
+    │   │   ├── prospector.ts    # Company discovery agent
+    │   │   └── outreach.ts      # Email outreach agent
     │   ├── auth/          # Better Auth configuration
     │   ├── db/            # Database schemas and config
     │   ├── endpoints/     # API endpoint handlers
+    │   ├── lib/           # Utilities and tools
     │   └── index.ts       # Main worker entry point
     ├── drizzle/           # Database migrations
     └── wrangler.toml      # Worker configuration
@@ -169,17 +182,25 @@ npm run db:push:local
 ### API Endpoints
 
 #### Authentication
-- `POST /api/auth/sign-in` - Email/password sign in
-- `POST /api/auth/sign-up` - User registration
-- `GET /api/auth/callback/google` - Google OAuth callback
+- `POST /api/auth/sign-in/email` - Email/password sign in
+- `POST /api/auth/sign-in/anonymous` - Anonymous sign in
+- `POST /api/auth/sign-up/email` - User registration
 - `POST /api/auth/sign-out` - Sign out
+- `GET /api/auth/get-session` - Get current session
+- `GET /api/auth/cloudflare/geolocation` - Get user geolocation
 
-#### Currently Implemented (Protected)
-- `POST /chat/start` - Create a new conversation/campaign
-- `POST /chat/:id/message` - Send messages and interact
-- `GET /chat/:id` - Get conversation/campaign history
-- `GET /chats` - List all conversations/campaigns (paginated)
-- `DELETE /chat/:id` - Delete a conversation/campaign
+#### Public API
+- `GET /api/public/hello` - Public hello message
+- `GET /api/public/info` - Server information
+
+#### Protected API (requires authentication)
+- `GET /api/protected/profile` - Get user profile
+- `POST /api/protected/items` - Create new item
+- `GET /api/protected/items` - List all items
+- `DELETE /api/protected/items/:id` - Delete item
+
+#### AI Agents
+- `POST /api/agents/prospects` - Query prospects agent
 
 #### Coming Soon
 - `GET /companies` - Search and discover relevant companies
@@ -193,29 +214,28 @@ npm run db:push:local
 
 ### Environment Variables
 
-Create a `.env.local` file in `chat-frontend/`:
+Create a `.env.local` file in `frontend/` (or copy from `.env.example`):
 
 ```env
 # Development
 NEXT_PUBLIC_API_URL=http://localhost:8787
 
 # Production
-# NEXT_PUBLIC_API_URL=https://applyo-worker.your-subdomain.workers.dev
+# NEXT_PUBLIC_API_URL=https://applyo-worker.applyo.workers.dev
 ```
 
 ### Frontend Features
 
 - **Framework:** Next.js 15 with App Router and Turbopack
 - **UI Library:** React 19
-- **AI Components:** Vercel AI SDK for chat interface and streaming
 - **Styling:** Tailwind CSS 4
-- **Components:** Radix UI (Avatar, Dropdown, Tooltip, etc.)
-- **Authentication:** Better Auth client with Google sign-in
+- **Components:** Radix UI components and custom UI elements
+- **Authentication:** Better Auth client with email/anonymous sign-in
 - **Icons:** Lucide React
-- **Code Highlighting:** React Syntax Highlighter
-- **Flow Diagrams:** XYFlow React
+- **PDF Processing:** PDF.js for resume analysis
+- **Deployment:** Cloudflare Workers with OpenNext adapter
 
-The chat interface uses Vercel AI SDK's streaming components for real-time AI responses.
+The frontend includes authentication flows, resume upload functionality, and a clean dashboard interface.
 
 ## 🚢 Deployment
 
@@ -244,23 +264,28 @@ The chat interface uses Vercel AI SDK's streaming components for real-time AI re
    npm run deploy
    ```
 
-### Deploy Frontend (Cloudflare Pages)
+### Deploy Frontend (Cloudflare Workers with OpenNext)
+
+The frontend is now configured to deploy to Cloudflare Workers using the OpenNext adapter:
 
 **Option 1: Command Line**
 ```bash
-cd chat-frontend
-pnpm build
-npx wrangler pages deploy out --project-name=applyo-chat
+cd frontend
+pnpm run deploy
 ```
 
-**Option 2: Git Integration**
-1. Connect your repository to Cloudflare Pages
-2. Configure build settings:
-   - **Build command:** `cd chat-frontend && pnpm install && pnpm build`
-   - **Build output directory:** `chat-frontend/out`
-   - **Root directory:** `/`
-   - **Environment variables:**
-     - `NEXT_PUBLIC_API_URL`: Your worker URL
+**Option 2: Preview locally with Cloudflare runtime**
+```bash
+cd frontend
+pnpm run preview
+```
+
+**Environment Variables for Production:**
+Set in Cloudflare dashboard or via Wrangler:
+```bash
+wrangler secret put NEXT_PUBLIC_API_URL
+# Enter: https://applyo-worker.applyo.workers.dev
+```
 
 ## 🔐 Authentication Setup
 
@@ -298,42 +323,45 @@ npm test
 - `npm run db:generate` - Generate migrations
 - `npm run db:studio` - Open Drizzle Studio
 
-### Frontend (chat-frontend)
+### Frontend (frontend)
 - `pnpm dev` - Start development server
-- `pnpm build` - Build for production
+- `pnpm build` - Build for production  
 - `pnpm start` - Start production server
-- `pnpm deploy` - Build and deploy to Cloudflare Pages
+- `pnpm preview` - Preview with Cloudflare runtime
+- `pnpm deploy` - Build and deploy to Cloudflare Workers
+- `pnpm cf-typegen` - Generate Cloudflare environment types
 
 ## 🛠️ Tech Stack
 
 ### Frontend
 - **Next.js 15** with Turbopack
 - **React 19**
-- **Vercel AI SDK** - AI chat components and streaming
-- **Better Auth** - Client-side authentication with Google OAuth
-- TypeScript
-- Tailwind CSS 4
-- Radix UI Components
-- XYFlow for visualizations
-- React Syntax Highlighter
+- **Better Auth** - Client-side authentication 
+- **TypeScript**
+- **Tailwind CSS 4**
+- **Radix UI Components**
+- **Lucide React Icons**
+- **PDF.js** - PDF processing
+- **OpenNext Adapter** - Cloudflare Workers deployment
 
 ### Backend
 - **Cloudflare Workers** - Serverless API
-- **D1 Database** - SQLite with Drizzle ORM
-- **Better Auth** - Authentication with Cloudflare adapter
-- TypeScript
-- Vitest for testing
-- Wrangler CLI
+- **SQLite Database** - With Drizzle ORM
+- **Better Auth** - Authentication system
+- **AI Agents** - Intelligent automation
+- **TypeScript**
+- **Hono Framework**
+- **Wrangler CLI**
 
 ### Deployment
-- Cloudflare Pages (frontend)
-- Cloudflare Workers (backend)
+- **Cloudflare Workers** (both frontend and backend)
+- **OpenNext** - Next.js to Workers adapter
 
 ## 📚 Additional Documentation
 
-- [Frontend README](./chat-frontend/README.md)
-- [Frontend Deployment Guide](./chat-frontend/DEPLOYMENT.md)
-- [Backend Development Guide](./applyo-worker/README.md)
+- [Frontend README](./frontend/README.md)
+- [Backend README](./applyo-worker/README.md)
+- [API Documentation](./API_DOCUMENTATION.md)
 
 ## 🤝 Contributing
 

@@ -45,7 +45,12 @@ Protected endpoints are marked with a 🔒 badge and require you to be logged in
 app.use(
     "/api/auth/**",
     cors({
-        origin: "http://localhost:3000", // In production, replace with your actual domain
+        origin: [
+            "http://localhost:3000",      // Next.js dev server
+            "http://localhost:3001",      // Cloudflare Workers preview (fixed port)
+            /^http:\/\/localhost:\d+$/,   // Any localhost port for development
+            "https://applyo-frontend.applyo.workers.dev",  // Production frontend URL
+        ],
         allowHeaders: ["Content-Type", "Authorization"],
         allowMethods: ["POST", "GET", "OPTIONS"],
         exposeHeaders: ["Content-Length"],
@@ -966,7 +971,7 @@ app.get("/health", c => {
 export default {
     async fetch(request, env, ctx) {
       // First let Cloudflare handle any /agents/... requests automatically
-      const agentResponse = await routeAgentRequest(request, env)
+      const agentResponse = await routeAgentRequest(request, env, { cors: true })
       if (agentResponse) return agentResponse;
       return openapi.fetch(request, env, ctx);
     }
