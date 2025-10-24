@@ -1,6 +1,7 @@
 /**
  * Pages Function to proxy all API requests to applyo-worker
  * This handles all /api/* routes and forwards them to the bound worker
+ * The catchall parameter will be available as context.params.catchall (array)
  */
 
 import type { Fetcher, EventContext } from '@cloudflare/workers-types';
