@@ -5,12 +5,6 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { generateText } from "ai"
 
 class Profiler extends Agent {
-  initialState = {
-    companiesFound: 0, 
-    lastUpdated: null, 
-    companyNames: 0, 
-  };
-
   async onStart() {
     console.log('Agent started with state:', this.state);
   }
@@ -20,7 +14,6 @@ class Profiler extends Agent {
     const openai = createOpenAI({ apiKey });
     const model = openai("gpt-4o-mini");
 
-    // Parse the request body to get the resume text
     const body = (await request.json()) as { resume?: string };
     const resumeText = body?.resume ?? "";
 

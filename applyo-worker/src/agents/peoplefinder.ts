@@ -21,17 +21,13 @@ class PeopleFinder extends Agent {
           tools,
           prompt:
           `You are provided with a company name and website. Your task is to find **exactly 3 high-ranking individuals** (executives, founders, C-suite, senior leadership) at this company.
-
             ---
-
             ### Step 1: Understand the company
             From the given company name, infer:
             - Industry and sector
             - Company size (startup, mid-size, enterprise)
             - Likely organizational structure
-
             ---
-
             ### Step 2: Search for people
             Use the **searchWeb** tool **multiple times** (at least 3-5 searches) to find real people who work at this company. Try different search strategies:
 

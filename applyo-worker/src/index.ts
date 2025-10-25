@@ -7,6 +7,7 @@ import type { CloudflareBindings } from "./env.d";
 import Prospects from "./agents/prospector";
 import Profiler from "./agents/profiler";
 import PeopleFinder from "./agents/peoplefinder";
+import EmailFinder from "./agents/emailfinder";
 import { Agent, AgentNamespace, getAgentByName, routeAgentRequest } from 'agents';
 import { z } from "zod";
 
@@ -15,6 +16,7 @@ interface Env {
   Prospects: AgentNamespace<Prospects>;
   Profiler: AgentNamespace<Profiler>;
   PeopleFinder: AgentNamespace<PeopleFinder>;
+  EmailFinder: AgentNamespace<EmailFinder>;
 }
 
 type Variables = {
@@ -302,6 +304,63 @@ class PeopleFinderRoute extends OpenAPIRoute {
 
       // manually call the agent
       const agent = await getAgentByName(env.PeopleFinder, "main");
+      const resp = await agent.fetch(
+        new Request("http://internal", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body,
+        })
+      );
+
+      return resp;
+    }
+  }
+
+class EmailFinderRoute extends OpenAPIRoute {
+    schema = {
+      tags: ["Agents"],
+      summary: "Call EmailFinder Agent",
+      description: "Find likely professional email addresses for a person at a company using open-web intelligence",
+      request: {
+        body: {
+          content: {
+            "application/json": {
+              schema: z.object({
+                firstName: z.string().min(1).describe("Person's first name"),
+                lastName: z.string().min(1).describe("Person's last name"),
+                company: z.string().min(1).describe("Company name"),
+                domain: z.string().min(1).describe("Company domain (e.g., shopify.com)"),
+              }),
+            },
+          },
+        },
+      },
+      responses: {
+        "200": {
+          description: "Agent response with discovered email addresses",
+          content: {
+            "application/json": {
+              schema: z.object({
+                emails: z.array(z.string()).describe("List of discovered email addresses"),
+                pattern_found: z.string().describe("Email pattern discovered (e.g., firstname.lastname)"),
+                research_notes: z.string().describe("Summary of where clues came from"),
+                state: z.any().optional(),
+                error: z.string().optional(),
+              }),
+            },
+          },
+        },
+      },
+    };
+
+    async handle(c: any) {
+      const env = c.env;
+
+      const reqData = await this.getValidatedData<typeof this.schema>();
+      const body = JSON.stringify(reqData.body);
+
+      // manually call the agent
+      const agent = await getAgentByName(env.EmailFinder, "main");
       const resp = await agent.fetch(
         new Request("http://internal", {
           method: "POST",
@@ -623,6 +682,7 @@ openapi.delete("/api/protected/items/:id", ProtectedDeleteItemRoute);
 openapi.post("/api/agents/prospects", ProspectorRoute);
 openapi.post("/api/agents/profiler", ProfilerRoute);
 openapi.post("/api/agents/peoplefinder", PeopleFinderRoute);
+openapi.post("/api/agents/emailfinder", EmailFinderRoute);
 
 
 // ============= END DEMO API ROUTES =============
@@ -1042,4 +1102,4 @@ export default {
     }
   };
 
-export { Prospects, Profiler, PeopleFinder }; 
+export { Prospects, Profiler, PeopleFinder, EmailFinder }; 

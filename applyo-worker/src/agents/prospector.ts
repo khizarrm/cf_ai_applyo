@@ -5,7 +5,6 @@ import { tools } from "../lib/tools";
 
 const model = openai("gpt-4o-2024-11-20");
 
-
 class Prospects extends Agent {
   async onStart() {
     console.log('Agent started with state:', this.state);
@@ -82,8 +81,6 @@ class Prospects extends Agent {
     let companies;
     try {
         let cleanText = result.text.trim();
-        
-        // Remove markdown code blocks if present
         if (cleanText.startsWith('```json')) {
             cleanText = cleanText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
         } else if (cleanText.startsWith('```')) {

@@ -1,0 +1,120 @@
+import { Agent } from "agents";
+import { openai } from "@ai-sdk/openai"
+import { generateText, stepCountIs } from "ai";
+import { searchWeb } from "../lib/tools";
+
+const model = openai("gpt-4o-mini-2024-07-18");
+
+class EmailFinder extends Agent {
+  async onStart() {
+    console.log('Agent started with state:', this.state);
+  }
+
+  async onRequest(_request: Request): Promise<Response> {
+      const body = await _request.json() as { firstName?: string; lastName?: string; company?: string; domain?: string };
+      const firstName = body.firstName || "";
+      const lastName = body.lastName || "";
+      const company = body.company || "";
+      const domain = body.domain || "";
+
+      const result = await generateText({
+          model,
+          tools: { searchWeb },
+          prompt: `You are a professional email finder for executives.
+Your goal: discover **likely real** email addresses for ${firstName} ${lastName} (${company}) using open-web intelligence.
+
+1️⃣ Run 5–10 searches with searchWeb to collect clues (GitHub, press releases, Personal websites, LinkedIn, Crunchbase, RocketReach, etc.).
+2️⃣ Extract only email addresses with the same domain (${domain}) or verified patterns.
+3️⃣ Derive possible patterns if nothing direct shows up.
+
+Common formats:
+- {first}@{domain}
+- {first}.{last}@{domain}
+- {f}{last}@{domain}
+- {first}{last}@{domain}
+- role emails (ceo@, founders@, contact@)
+
+4️⃣ Return ONLY valid JSON (no markdown, no explanations):
+{
+  "emails": ["email1@domain.com", "email2@domain.com"],
+  "pattern_found": "e.g. firstname.lastname",
+  "research_notes": "summary of where clues came from"
+}
+
+CRITICAL RULES:
+- Return ONLY the JSON object above, nothing else
+- No markdown code blocks (\`\`\`json\`\`\`)
+- Prioritize results from credible domains
+- Minimum 3, max 8 results
+- Use **searchweb** tool multiple times if needed
+- If no credible sources found, return 3 educated guesses based on common patterns
+- Ensure the JSON is valid and parseable
+
+If you failed to find any emails, please return the follwing:
+{"emails": [], "pattern_found": "none", "research_notes": "no results"}
+`,
+          toolChoice: "auto",
+          stopWhen: stepCountIs(10)
+      });
+
+    let emailResult;
+    try {
+        // Check if we got any response at all
+        if (!result.text || result.text.trim().length === 0) {
+            throw new Error("Empty response from AI model");
+        }
+
+        let cleanText = result.text.trim();
+        
+        // Remove markdown code blocks if present
+        if (cleanText.startsWith('```json')) {
+            cleanText = cleanText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+        } else if (cleanText.startsWith('```')) {
+            cleanText = cleanText.replace(/^```\s*/, '').replace(/\s*```$/, '');
+        }
+
+        // Extract JSON object from the text
+        const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            cleanText = jsonMatch[0];
+        }
+
+        // Final validation before parsing
+        if (!cleanText || cleanText.trim().length === 0) {
+            throw new Error("No valid JSON found in response");
+        }
+
+        console.log("Cleaned text for parsing:", cleanText);
+        emailResult = JSON.parse(cleanText);
+        
+        // Validate the parsed structure
+        if (!emailResult.emails || !Array.isArray(emailResult.emails)) {
+            throw new Error("Invalid JSON structure: missing emails array");
+        }
+        
+    } catch (e) {
+        console.error("Failed to parse JSON:", e);
+        console.error("Raw text response:", result.text);
+        emailResult = {
+            emails: [],
+            pattern_found: "none",
+            research_notes: "Failed to parse response - AI model returned empty or invalid JSON",
+            error: e instanceof Error ? e.message : String(e),
+            rawText: result.text
+        };
+    }
+
+    return new Response(
+      JSON.stringify({
+        ...emailResult,
+        state: this.state,
+      }),
+      {
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+  }
+
+}
+
+export default EmailFinder;
