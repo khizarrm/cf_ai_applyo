@@ -1,5 +1,5 @@
-export async function verifyEmail(email: string): Promise<string> {
-    const apiKey = "e8f1d1eee4e444e996351966d451dfd6";
+export async function verifyEmail(email: string, env: { ZEROBOUNCE_API_KEY: string }): Promise<string> {
+    const apiKey = env.ZEROBOUNCE_API_KEY;
     const url = `https://api.zerobounce.net/v2/validate?api_key=${apiKey}&email=${encodeURIComponent(email)}`;
 
     const response = await fetch(url);

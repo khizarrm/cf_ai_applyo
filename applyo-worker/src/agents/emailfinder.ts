@@ -3,10 +3,11 @@ import { openai } from "@ai-sdk/openai"
 import { generateText, stepCountIs } from "ai";
 import { searchWeb } from "../lib/tools";
 import { verifyEmail } from "../lib/utils";
+import type { CloudflareBindings } from "../env.d";
 
 const model = openai("gpt-4o-mini-2024-07-18");
 
-class EmailFinder extends Agent {
+class EmailFinder extends Agent<CloudflareBindings> {
   async onStart() {
     console.log('Agent started with state:', this.state);
   }
@@ -61,27 +62,23 @@ If you failed to find any emails, please return the follwing:
 
     let emailResult;
     try {
-        // Check if we got any response at all
         if (!result.text || result.text.trim().length === 0) {
             throw new Error("Empty response from AI model");
         }
 
         let cleanText = result.text.trim();
 
-        // Remove markdown code blocks if present
         if (cleanText.startsWith('```json')) {
             cleanText = cleanText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
         } else if (cleanText.startsWith('```')) {
             cleanText = cleanText.replace(/^```\s*/, '').replace(/\s*```$/, '');
         }
 
-        // Extract JSON object from the text
         const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
             cleanText = jsonMatch[0];
         }
 
-        // Final validation before parsing
         if (!cleanText || cleanText.trim().length === 0) {
             throw new Error("No valid JSON found in response");
         }
@@ -89,7 +86,6 @@ If you failed to find any emails, please return the follwing:
         console.log("Cleaned text for parsing:", cleanText);
         emailResult = JSON.parse(cleanText);
 
-        // Validate the parsed structure
         if (!emailResult.emails || !Array.isArray(emailResult.emails)) {
             throw new Error("Invalid JSON structure: missing emails array");
         }
@@ -112,7 +108,7 @@ If you failed to find any emails, please return the follwing:
         console.log("Verifying emails:", emailResult.emails);
         const verificationPromises = emailResult.emails.map(async (email: string) => {
             try {
-                const status = await verifyEmail(email);
+                const status = await verifyEmail(email, this.env);
                 console.log(`Email ${email} verification status: ${status}`);
                 return (status === "valid" || status === "catch-all") ? email : null;
             } catch (error) {

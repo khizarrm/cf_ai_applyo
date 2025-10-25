@@ -5,6 +5,7 @@ export interface CloudflareBindings {
     KV?: KVNamespace;
     Prospects: AgentNamespace<Prospects>;
     TAVILY_API_KEY: string;
+    ZEROBOUNCE_API_KEY: string;
 }
 
 declare global {
