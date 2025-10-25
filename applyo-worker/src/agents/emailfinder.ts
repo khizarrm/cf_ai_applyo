@@ -2,6 +2,7 @@ import { Agent } from "agents";
 import { openai } from "@ai-sdk/openai"
 import { generateText, stepCountIs } from "ai";
 import { searchWeb } from "../lib/tools";
+import { verifyEmail } from "../lib/utils";
 
 const model = openai("gpt-4o-mini-2024-07-18");
 
@@ -19,6 +20,7 @@ class EmailFinder extends Agent {
 
       const result = await generateText({
           model,
+          temperature: 0,
           tools: { searchWeb },
           prompt: `You are a professional email finder for executives.
 Your goal: discover **likely real** email addresses for ${firstName} ${lastName} (${company}) using open-web intelligence.
@@ -65,7 +67,7 @@ If you failed to find any emails, please return the follwing:
         }
 
         let cleanText = result.text.trim();
-        
+
         // Remove markdown code blocks if present
         if (cleanText.startsWith('```json')) {
             cleanText = cleanText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
@@ -86,12 +88,12 @@ If you failed to find any emails, please return the follwing:
 
         console.log("Cleaned text for parsing:", cleanText);
         emailResult = JSON.parse(cleanText);
-        
+
         // Validate the parsed structure
         if (!emailResult.emails || !Array.isArray(emailResult.emails)) {
             throw new Error("Invalid JSON structure: missing emails array");
         }
-        
+
     } catch (e) {
         console.error("Failed to parse JSON:", e);
         console.error("Raw text response:", result.text);
@@ -104,9 +106,43 @@ If you failed to find any emails, please return the follwing:
         };
     }
 
+    // Verify emails if any were found
+    let verifiedEmails: string[] = [];
+    if (emailResult.emails && emailResult.emails.length > 0) {
+        console.log("Verifying emails:", emailResult.emails);
+        const verificationPromises = emailResult.emails.map(async (email: string) => {
+            try {
+                const status = await verifyEmail(email);
+                console.log(`Email ${email} verification status: ${status}`);
+                return (status === "valid" || status === "catch-all") ? email : null;
+            } catch (error) {
+                console.error(`Failed to verify ${email}:`, error);
+                return null;
+            }
+        });
+
+        const results = await Promise.all(verificationPromises);
+        verifiedEmails = results.filter((email): email is string => email !== null);
+    }
+
+    // Update final response
+    const finalResult = verifiedEmails.length > 0
+        ? {
+            emails: verifiedEmails,
+            pattern_found: emailResult.pattern_found,
+            research_notes: emailResult.research_notes,
+            verification_summary: `${verifiedEmails.length} out of ${emailResult.emails.length} emails verified`
+          }
+        : {
+            emails: [],
+            pattern_found: emailResult.pattern_found || "none",
+            research_notes: "No verified emails found",
+            verification_summary: `0 out of ${emailResult.emails?.length || 0} emails verified`
+          };
+
     return new Response(
       JSON.stringify({
-        ...emailResult,
+        ...finalResult,
         state: this.state,
       }),
       {
