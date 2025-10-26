@@ -37,17 +37,24 @@ export default function LoginForm() {
 
   const handleAnonymousLogin = async () => {
     setError('');
-    setLoading(true);
 
-    try {
-      // await auth.loginAnonymously();
-      console.log("assume anonymous loggin")
-      window.location.href = '/dashboard';
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Anonymous login failed');
-    } finally {
-      setLoading(false);
-    }
+    await authClient.signIn.anonymous({
+      fetchOptions: {
+        onRequest: () => {
+          setLoading(true);
+        },
+        onSuccess: () => {
+          console.log('Anonymous login success');
+          setLoading(false);
+          window.location.href = '/dashboard';
+        },
+        onError: (ctx) => {
+          console.log('Anonymous login error:', ctx);
+          setError(ctx.error.message || 'Anonymous login failed');
+          setLoading(false);
+        }
+      }
+    });
   };
 
   return (

@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@opennextjs/cloudflare": "^1.10.1",
+    "@tavily/core": "^0.5.12",
     "agents": "^0.2.13",
     "better-auth-cloudflare": "^0.2.7",
     "chanfana": "^2.6.3",

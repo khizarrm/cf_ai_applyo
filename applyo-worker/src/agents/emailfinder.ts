@@ -102,7 +102,6 @@ If you failed to find any emails, please return the follwing:
         };
     }
 
-    // Verify emails if any were found
     let verifiedEmails: string[] = [];
     if (emailResult.emails && emailResult.emails.length > 0) {
         console.log("Verifying emails:", emailResult.emails);
@@ -121,7 +120,6 @@ If you failed to find any emails, please return the follwing:
         verifiedEmails = results.filter((email): email is string => email !== null);
     }
 
-    // Update final response
     const finalResult = verifiedEmails.length > 0
         ? {
             emails: verifiedEmails,

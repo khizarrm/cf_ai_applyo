@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/khizarmalik/repos/applyo/frontend/lib/**)",
+      "WebSearch"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
