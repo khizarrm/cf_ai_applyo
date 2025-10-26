@@ -14,16 +14,18 @@ function createAuth(env?: CloudflareBindings, cf?: IncomingRequestCfProperties) 
 
     return betterAuth({
         secret: env?.BETTER_AUTH_SECRET || "fallback-secret-for-dev",
+        baseURL: env?.BETTER_AUTH_URL || "https://applyo-worker.applyo.workers.dev",
         trustedOrigins: [
             "http://localhost:3000",
             "http://localhost:3001",
+            "https://applyo-worker.applyo.workers.dev",
             "https://applyo-frontend.applyo.workers.dev",
             "https://cf-ai-applyo.pages.dev"
         ],
         advanced: {
             defaultCookieAttributes: {
                 sameSite: "none",
-                secure: true,
+                secure: env?.BETTER_AUTH_URL?.startsWith('https') ?? true,
                 partitioned: true // New browser standards will mandate this for foreign cookies
             }
         },
