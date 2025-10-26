@@ -15,7 +15,7 @@ export default function LoginForm() {
     try {
       await authClient.signIn.social({
         provider: 'google',
-        callbackURL: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
+        callbackURL: `${process.env.NEXT_PUBLIC_APP_URL || 'https://cf-ai-applyo.pages.dev'}/dashboard`,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Google login failed');

@@ -13,6 +13,7 @@ function createAuth(env?: CloudflareBindings, cf?: IncomingRequestCfProperties) 
     const db = env?.DB ? drizzle(env.DB, { schema, logger: true }) : ({} as any);
 
     return betterAuth({
+        secret: env?.BETTER_AUTH_SECRET || "fallback-secret-for-dev",
         trustedOrigins: [
             "http://localhost:3000",
             "http://localhost:3001",
