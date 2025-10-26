@@ -8,21 +8,35 @@ export const searchWeb = tool({
     }),
     execute: async ({ query }, options) => {
         const env = (options as any).env;
-        const { tavily } = await import("@tavily/core");
-        const tvly = tavily({ apiKey: "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" });
-        const response = await tvly.search(query, {
-            search_depth: "basic",
-            max_results: 10
+        
+        const response = await fetch('https://api.websearchapi.ai/ai-search', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${env.WEBSEARCH_API}`
+            },
+            body: JSON.stringify({
+                query: query,
+                maxResults: 10,
+                includeContent: false,
+                country: 'us',
+                language: 'en'
+            })
         });
 
-        console.log("Tavily search results:", response);
+        if (!response.ok) {
+            throw new Error(`WebSearchAPI.ai request failed: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        console.log("WebSearchAPI.ai search results:", data);
 
         // Return formatted results for the LLM
         return {
-            results: response.results.map((r: any) => ({
+            results: data.organic.map((r: any) => ({
                 title: r.title,
                 url: r.url,
-                content: r.content
+                content: r.description
             }))
         };
     }

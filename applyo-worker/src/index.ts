@@ -33,7 +33,8 @@ app.use(
             const allowed = [
                 "http://localhost:3000",
                 "http://localhost:3001",
-                "https://applyo-frontend.applyo.workers.dev"
+                "https://applyo-frontend.applyo.workers.dev",
+                "https://cf-ai-applyo.pages.dev"
             ];
             return allowed.includes(origin) || /^http:\/\/localhost:\d+$/.test(origin) ? origin : allowed[0];
         },

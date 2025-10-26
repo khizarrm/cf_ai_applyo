@@ -8,7 +8,7 @@ declare namespace Cloudflare {
 	}
 	interface Env {
 		OPENAI_API_KEY: string;
-		TAVILY_API_KEY: string;
+		WEBSEARCH_API: string;
 		Prospects: DurableObjectNamespace<import("./src/index").Prospects>;
 		Profiler: DurableObjectNamespace<import("./src/index").Profiler>;
 		DB: D1Database;
@@ -19,7 +19,7 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "OPENAI_API_KEY" | "TAVILY_API_KEY">> {}
+	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "OPENAI_API_KEY" | "WEBSEARCH_API">> {}
 }
 
 // Begin runtime types
