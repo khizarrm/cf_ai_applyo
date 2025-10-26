@@ -46,6 +46,7 @@ Common formats:
 
 CRITICAL RULES:
 - Return ONLY the JSON object above, nothing else
+- Exclude emails which are omitted by marks such as 'o****@gmail.com'
 - No markdown code blocks (\`\`\`json\`\`\`)
 - Prioritize results from credible domains
 - Minimum 3, max 8 results

@@ -6,6 +6,8 @@ export interface CloudflareBindings {
     Prospects: AgentNamespace<Prospects>;
     TAVILY_API_KEY: string;
     ZEROBOUNCE_API_KEY: string;
+    GOOGLE_CLIENT_ID?: string;
+    GOOGLE_CLIENT_SECRET?: string;
 }
 
 declare global {

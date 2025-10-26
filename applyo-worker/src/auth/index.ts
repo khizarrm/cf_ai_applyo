@@ -42,8 +42,20 @@ function createAuth(env?: CloudflareBindings, cf?: IncomingRequestCfProperties) 
                 kv: env?.KV,
             },
             {
-                emailAndPassword: {
-                    enabled: true,
+                socialProviders: {
+                    google: {
+                        clientId: env?.GOOGLE_CLIENT_ID || "",
+                        clientSecret: env?.GOOGLE_CLIENT_SECRET || "",
+                        scope: [
+                            "openid",
+                            "email",
+                            "profile",
+                            "https://www.googleapis.com/auth/gmail.readonly",
+                            "https://www.googleapis.com/auth/gmail.send"
+                        ],
+                        accessType: "offline",
+                        prompt: "consent"
+                    }
                 },
                 plugins: [anonymous()],
                 rateLimit: {
