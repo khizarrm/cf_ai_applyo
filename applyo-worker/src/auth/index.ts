@@ -16,7 +16,8 @@ function createAuth(env?: CloudflareBindings, cf?: IncomingRequestCfProperties) 
         trustedOrigins: [
             "http://localhost:3000",
             "http://localhost:3001",
-            "https://applyo-frontend.applyo.workers.dev"
+            "https://applyo-frontend.applyo.workers.dev",
+            "https://cf-ai-applyo.pages.dev"
         ],
         advanced: {
             defaultCookieAttributes: {
