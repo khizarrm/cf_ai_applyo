@@ -1,6 +1,8 @@
 
 PROMPTS:
 
+---
+
 //creating the D1 db for messages and chats {
   "d1_databases": [
     {
@@ -28,7 +30,12 @@ CREATE TABLE messages (
   FOREIGN KEY (chat_id) REFERENCES chats(id)
 );
 
-make this db in d1 cloudfare, and push it//creating endpointsnice! now, we need to make the following endpoints:
+make this db in d1 cloudfare, and push it
+
+---
+
+//creating endpoints
+nice! now, we need to make the following endpoints:
 
 POST /chat/start - creating new chat
 POST /chat/id/message - sending message and getting a reply
@@ -38,7 +45,10 @@ DELETE /chat/id - delete chat and all messages
 
 it should get all this info from the 'applyo' db we just created. 
 
-//FRONTENDright now theres no frontend, can u make osmething really simple for me to deploy to pages. use react and next js, use pnpm 
+---
+
+//FRONTEND
+right now theres no frontend, can u make osmething really simple for me to deploy to pages. use react and next js, use pnpm 
 
 connect the front end to the backend please
 
@@ -47,6 +57,8 @@ make it get the endpoint from a .env file: for dev use the current url we have, 
 @https://my-first-worker-production.applyo.workers.dev 
 
 use the cloud fare docs mcp to see the best way to go about this, making sure they connect well, pages and the worker
+
+---
 
 //auth 
 https://github.com/zpg6/better-auth-cloudflare?tab=readme-ov-file#quick-start-with-cli
@@ -106,6 +118,8 @@ export const schema = {
   posts,
 } as const;
 
+---
+
 //another prompt 
 
 just made some migrations with better auth for my cloudfare. now we gotta use drizzle kit to create and apply migrations to my db. 
@@ -114,7 +128,10 @@ just made some migrations with better auth for my cloudfare. now we gotta use dr
 
 you can read this, and also use the better auth mcp to read their docs. plan first, and then present the plan to me. if i approve, you can implement it.
 
-//more implementationperfect! now the better auth setup is done. now i want to setup sign in with google. 
+---
+
+//more implementation
+perfect! now the better auth setup is done. now i want to setup sign in with google. 
 
 heres some info from the better-auth-cloudfare docs: 
 
@@ -231,9 +248,10 @@ const downloadFile = async (fileId: string, filename: string) => {
 ```
 using this, i need you to implement auth in my app. come up with a plan, refer to the better auth mcp as well. for the db, we're also gonna have to add user id to each chat row so it's linked to a user, so plan how to do that too, ideally that first. then we can implement auth (sign in with google). Refer to Claude md for best practices. 
 
+---
 
-
-///fixing auth implementation alright man. im trying to implement better auth in this repo, which i did, but it was done wrong. eg. no auth client or whatever, structuing is weak too. here's the lib im using: better-auth-cloudfare 
+///fixing auth implementation
+alright man. im trying to implement better auth in this repo, which i did, but it was done wrong. eg. no auth client or whatever, structuing is weak too. here's the lib im using: better-auth-cloudfare 
 
 these are the docs and step by step instructions on how to imlement it. im using D1 instead of R2. and we arent using open next js. 
 
@@ -724,14 +742,18 @@ Contributions are welcome! Whether it's bug fixes, feature additions, or documen
 ````
 
 can u find the limitations of how we implemented bettrauth, and suggest a plan to do it the right way according to these docs? do not make any changes, come up with a plan and present it to me first. if i approve, you may code.
+
+---
+
 make an api client in the frontend. first, check out how the auth is implemented in the backend, we're currently using better auth. i've already implemented the auth ui in the backend (dashboard page). i need you to just replicate this in the frontend so users can be authenticated from there too. 
 
 in the api client file you make, the base url should be 'https://applyo-worker.applyo.workers.dev'
 
+---
 
 im calling the get session api of better auth from my frontend, but its not working, i get cors issues, do i have to add somethign to better auth like give permissiosn to recieve this from frontend? read the docs and lmk. confirm it based off evidence, do not assume:
 
-
+---
 
 in the frontend, i need you to make a button to upload a file (which will be the users resume). use the add-input shadcn component i just installed. 
 
@@ -739,6 +761,74 @@ we'll use pdf parse to extract everything from the file, and save that.
 
 in the backend, we have a profiler agent which takes in a resume as a string. we'll send it to there, and whatever the response is, we'll display it in the frontend. come up with a good plan for this. break it up into 2 phases: phase 1 is just extracting the text, and phase 2 would be sending it and displaying the response in the frontend. 
 
-come up with a plan, and present it to me. dont code before i approve. 
+come up with a plan, and present it to me. dont code before i approve.
 
+---
+
+//chat agent implementation
+im trying to implement a new agent for chat purposes, i wanna store the state n everything, and also keep it in the db with a chat and messages table. need you to help me plan a new feature. we're gonna add a chat functionality, so once the user signs in, it'll just show a chat functionality. would be like a chat gpt clone. we'll use vercel ai sdk.
+
+@https://github.com/cloudflare/agents-starter
+
+here's a repo which has it already implemented with cloudflare. can u discuss w me how to implement it. [provided server code using AIChatAgent with streamText and client code using useAgent/useAgentChat hooks]
+
+so u can get an idea of how it renders. feel free to read more of the repo, but see how it has memory with the messages, we wanna use that.
+
+---
+
+//clarification - d1 not neon
+apologies, not using neon at all, ignore that for now. just using cloudflare d1. this will be in my existing worker, there is no neon db. no chat and messages table either. and one chat has many messages, tied to a user. users being authenticated by better auth, so the users table already exists. chat sessions will be user specific too.
+
+---
+
+//verification before implementation
+also, before you do. reread the plan one more time, checking the agents repo and referring to claude md, making sure ur not making assumptions so this process is smooth
+
+---
+
+//requirements confirmation
+yea streaming chat. should be just like the agents github link i provided. so has to be like chat gpt, multiple chat sessions per user. d1 backup too. we'll use api endpoints.
+
+---
+
+//documentation request
+nice. can u make this into an md file please, call it chat agent.md in the worker folder
+
+---
+
+//chat agent implementation
+im trying to implement a new agent for chat purposes, i wanna store the state n everything, and also keep it in the db with a chat and messages table. need you to help me plan a new feature. we're gonna add a chat functionality, so once the user signs in, it'll just show a chat functionality. would be like a chat gpt clone. we'll use vercel ai sdk.
+
+@https://github.com/cloudflare/agents-starter
+
+here's a repo which has it already implemented with cloudflare. can u discuss w me how to implement it. [provided server code using AIChatAgent with streamText and client code using useAgent/useAgentChat hooks]
+
+so u can get an idea of how it renders. feel free to read more of the repo, but see how it has memory with the messages, we wanna use that.
+
+---
+
+//clarification - d1 not neon
+apologies, not using neon at all, ignore that for now. just using cloudflare d1. this will be in my existing worker, there is no neon db. no chat and messages table either. and one chat has many messages, tied to a user. users being authenticated by better auth, so the users table already exists. chat sessions will be user specific too.
+
+---
+
+//verification before implementation
+also, before you do. reread the plan one more time, checking the agents repo and referring to claude md, making sure ur not making assumptions so this process is smooth
+
+---
+
+//requirements confirmation
+yea streaming chat. should be just like the agents github link i provided. so has to be like chat gpt, multiple chat sessions per user. d1 backup too. we'll use api endpoints.
+
+---
+
+//documentation request
+nice. can u make this into an md file please, call it chat agent.md in the worker folder
+
+---
+
+//extracting good prompts
+ok nice. now according to all of the prompts ive given you, please take the ones which show my skills most and helped you the most with planning, and just add them to prompts.md file in my root applyo folder
+
+---
 
