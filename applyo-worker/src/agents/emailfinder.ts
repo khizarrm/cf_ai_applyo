@@ -110,7 +110,7 @@ Don't stop after using the tools, make sure to return some emails no matter what
             try {
                 const status = await verifyEmail(email, this.env);
                 console.log(`Email ${email} verification status: ${status}`);
-                return (status === "valid" || status === "catch-all") ? email : null;
+                return (status === "valid") ? email : null;
             } catch (error) {
                 console.error(`Failed to verify ${email}:`, error);
                 return null;

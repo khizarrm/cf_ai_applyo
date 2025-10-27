@@ -73,6 +73,8 @@ class Prospects extends Agent {
           Additionally, here is some other information and prefences the user has provided for where they want to work at. Prioritize these requirments above all. This is **IMPORTANT**:
 
           <user_preferences>${preferences}</user_input> 
+
+          Do not return nothing, ensure you summarize and use tool data before returning
           `,          
           toolChoice: "auto",
           stopWhen: stepCountIs(10)

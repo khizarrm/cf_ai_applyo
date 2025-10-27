@@ -76,7 +76,8 @@ class PeopleFinder extends Agent {
           <company_website>${website}</company_website>
           `,
           toolChoice: "auto",
-          stopWhen: stepCountIs(10)
+          stopWhen: stepCountIs(10),
+          temperature: 0
       });
 
     let people;
