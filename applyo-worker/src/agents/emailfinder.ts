@@ -1,11 +1,11 @@
 import { Agent } from "agents";
 import { openai } from "@ai-sdk/openai"
 import { generateText, stepCountIs } from "ai";
-import { searchWeb } from "../lib/tools";
+import { tools } from "../lib/tools";
 import { verifyEmail } from "../lib/utils";
 import type { CloudflareBindings } from "../env.d";
 
-const model = openai("gpt-4o-mini-2024-07-18");
+const model = openai("gpt-4o-2024-11-20");
 
 class EmailFinder extends Agent<CloudflareBindings> {
   async onStart() {
@@ -21,8 +21,7 @@ class EmailFinder extends Agent<CloudflareBindings> {
 
       const result = await generateText({
           model,
-          temperature: 0,
-          tools: { searchWeb },
+          tools,
           prompt: `You are a professional email finder for executives.
 Your goal: discover **likely real** email addresses for ${firstName} ${lastName} (${company}) using open-web intelligence.
 
@@ -50,16 +49,17 @@ CRITICAL RULES:
 - No markdown code blocks (\`\`\`json\`\`\`)
 - Prioritize results from credible domains
 - Minimum 3, max 8 results
-- Use **searchweb** tool multiple times if needed
+- Use **searchWeb** tool multiple times if needed
 - If no credible sources found, return 3 educated guesses based on common patterns
 - Ensure the JSON is valid and parseable
 
-If you failed to find any emails, please return the follwing:
-{"emails": [], "pattern_found": "none", "research_notes": "no results"}
+Don't stop after using the tools, make sure to return some emails no matter what
 `,
           toolChoice: "auto",
           stopWhen: stepCountIs(10)
       });
+    
+    console.log("result text: ", result)
 
     let emailResult;
     try {

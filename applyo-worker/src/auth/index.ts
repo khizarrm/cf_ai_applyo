@@ -14,7 +14,6 @@ function createAuth(env?: CloudflareBindings, cf?: IncomingRequestCfProperties) 
 
     return betterAuth({
         secret: env?.BETTER_AUTH_SECRET || "fallback-secret-for-dev",
-        baseURL: env?.BETTER_AUTH_URL || "https://applyo-worker.applyo.workers.dev",
         trustedOrigins: [
             "http://localhost:3000",
             "http://localhost:3001",
@@ -25,7 +24,7 @@ function createAuth(env?: CloudflareBindings, cf?: IncomingRequestCfProperties) 
         advanced: {
             defaultCookieAttributes: {
                 sameSite: "none",
-                secure: env?.BETTER_AUTH_URL?.startsWith('https') ?? true,
+                secure: true,
                 partitioned: true // New browser standards will mandate this for foreign cookies
             }
         },
