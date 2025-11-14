@@ -19,10 +19,18 @@ class PeopleFinder extends Agent<CloudflareBindings> {
   }
 
   async onRequest(_request: Request): Promise<Response> {
-      const body = await _request.json() as { company?: string; website?: string };
+      const body = await _request.json() as { company?: string };
       const company = body.company || "";
-      const website = body.website || "";
       
+      if (!company) {
+        return new Response(
+          JSON.stringify({ error: "Company name is required" }),
+          { 
+            status: 400,
+            headers: { "Content-Type": "application/json" }
+          }
+        );
+      }
 
       const model = openai("gpt-4o-2024-11-20", {
         apiKey: this.env.OPENAI_API_KEY,
@@ -32,7 +40,8 @@ class PeopleFinder extends Agent<CloudflareBindings> {
           model,
           tools,
           prompt:
-          `You are provided with a company name and website. Your task is to find **exactly 3 high-ranking individuals** (executives, founders, C-suite, senior leadership) at this company.
+          `You are provided with a company name. Your task is to find **exactly 3 high-ranking individuals** (executives, founders, C-suite, senior leadership) at this company and identify the company website.
+
             ---
             ### Step 1: Understand the company
             From the given company name, infer:
@@ -40,17 +49,24 @@ class PeopleFinder extends Agent<CloudflareBindings> {
             - Company size (startup, mid-size, enterprise)
             - Likely organizational structure
             ---
-            ### Step 2: Search for people
+            ### Step 2: Find company website
+            Use the **searchWeb** tool to find the official company website. Search for:
+            - "company name official website"
+            - "company name.com"
+            - "company name company website"
+
+            ---
+            ### Step 3: Search for people
             Use the **searchWeb** tool **multiple times** (at least 3-5 searches) to find real people who work at this company. Try different search strategies:
 
-            1. Search for "site:website CEO founder executives leadership team" (if website provided)
-            2. Search for "company name CEO founder executives leadership team"
-            3. Search for "company name management team senior leadership"
-            4. Search for "company name about us team page"
-            5. Search for "company name LinkedIn executives officers"
-            6. Search for specific roles like "company name CTO VP Engineering"
+            1. Search for "company name CEO founder executives leadership team"
+            2. Search for "company name management team senior leadership"
+            3. Search for "company name about us team page"
+            4. Search for "company name LinkedIn executives officers"
+            5. Search for specific roles like "company name CTO VP Engineering"
+            6. If you found a website, search for "site:website CEO founder executives leadership team"
 
-            **IMPORTANT**: Use the searchWeb tool **several times** with different queries to ensure you find accurate, real people. Don't settle for the first search result. If a website is provided, prioritize searching within that domain.
+            **IMPORTANT**: Use the searchWeb tool **several times** with different queries to ensure you find accurate, real people. Don't settle for the first search result. If you found a website, prioritize searching within that domain.
 
             Focus on finding:
             - CEOs, Founders, Presidents
@@ -60,32 +76,33 @@ class PeopleFinder extends Agent<CloudflareBindings> {
 
             ---
 
-            ### Step 3: Return structured JSON
+            ### Step 4: Return structured JSON
             **CRITICAL**: Respond with ONLY valid JSON. No markdown, no explanations, no code blocks.
 
             Return exactly this structure:
 
             {
+              "company": "Company Name",
+              "website": "https://companywebsite.com", #ENSURE THIS IS THE WEBSITE OF THE COMPANY
               "people": [
                 {
                   "name": "Full Name",
-                  "role": "Exact Job Title",
-                  "company": "Company Name"
+                  "role": "Exact Job Title"
                 }
               ]
             }
 
             Rules:
-            - Include exactly 3 people (not more, not less).
+            - Include up to 3 people max.
             - Ensure all people are real and verifiable from your searches.
             - Use full names (not just first names or initials).
             - Use accurate job titles from your research.
+            - Include the company name exactly as provided and website int eh response.
             - Return ONLY the JSON object, nothing else.
             - Do not wrap in markdown code blocks.
             - Do not add any explanatory text before or after the JSON.
 
           <company_name>${company}</company_name>
-          <company_website>${website}</company_website>
           `,
           toolChoice: "auto",
           stopWhen: stepCountIs(20),
@@ -128,6 +145,8 @@ class PeopleFinder extends Agent<CloudflareBindings> {
         console.error("Failed to parse JSON:", e);
         console.error("Raw text response:", result.text);
         people = {
+            company: company,
+            website: "",
             people: [],
             error: "Failed to parse response",
             rawText: result.text,

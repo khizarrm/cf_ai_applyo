@@ -28,19 +28,18 @@ class Orchestrator extends Agent<CloudflareBindings> {
 
     // Tools for calling other agents
     const callPeopleFinder = tool({
-      description: "Find high-ranking people (executives, founders, C-suite) at a specific company. Returns 3 people with their names, roles, and company.",
+      description: "Find high-ranking people (executives, founders, C-suite) at a specific company. Returns company name, website, and 3 people with their names and roles.",
       inputSchema: z.object({
         company: z.string().describe("Company name"),
-        website: z.string().optional().describe("Company website URL (optional, helps with more accurate searches)"),
       }),
-      execute: async ({ company, website }) => {
+      execute: async ({ company }) => {
         try {
           const agent = await getAgentByName(this.env.PeopleFinder, "main");
           const resp = await agent.fetch(
             new Request("http://internal", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ company, website }),
+              body: JSON.stringify({ company }),
             })
           );
           const result = await resp.json();
@@ -49,6 +48,8 @@ class Orchestrator extends Agent<CloudflareBindings> {
         } catch (error) {
           console.error("Error calling PeopleFinder:", error);
           return { 
+            company: company,
+            website: "",
             people: [], 
             error: error instanceof Error ? error.message : String(error) 
           };
@@ -95,7 +96,7 @@ class Orchestrator extends Agent<CloudflareBindings> {
       prompt: `You are an orchestrator that finds emails for people at companies.
 
 Available tools:
-1. **callPeopleFinder** - Find executives/leaders at a specific company (returns 3 people with name, role, company)
+1. **callPeopleFinder** - Find executives/leaders at a specific company (returns company name, website, and 3 people with name and role)
 2. **callEmailFinder** - Find email addresses for a specific person (needs firstName, lastName, company, domain)
 
 When user asks for emails (e.g., "find founder emails at datacurve" or just "datacurve"):
@@ -103,7 +104,8 @@ When user asks for emails (e.g., "find founder emails at datacurve" or just "dat
 2. Call callPeopleFinder with the company name
 3. For each person found:
    - Split their name into firstName and lastName
-   - Infer the domain from the company name (e.g., "datacurve" -> "datacurve.com", "shopify" -> "shopify.com")
+   - Use the website from callPeopleFinder result to extract the domain (e.g., "https://datacurve.com" -> "datacurve.com")
+   - If no website is provided, infer the domain from the company name (e.g., "datacurve" -> "datacurve.com", "shopify" -> "shopify.com")
    - Call callEmailFinder with firstName, lastName, company, domain
 4. Return ONLY valid JSON with this structure:
 {

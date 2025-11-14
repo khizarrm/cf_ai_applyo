@@ -209,7 +209,6 @@ class PeopleFinderRoute extends OpenAPIRoute {
             "application/json": {
               schema: z.object({
                 company: z.string().min(1).describe("Company name to search for people"),
-                website: z.string().optional().describe("Company website URL (optional, helps with more accurate searches)"),
               }),
             },
           },
@@ -217,15 +216,16 @@ class PeopleFinderRoute extends OpenAPIRoute {
       },
       responses: {
         "200": {
-          description: "Agent response with 3 high-ranking individuals",
+          description: "Agent response with company name, website, and 3 high-ranking individuals",
           content: {
             "application/json": {
               schema: z.object({
+                company: z.string(),
+                website: z.string(),
                 people: z.array(
                   z.object({
                     name: z.string(),
                     role: z.string(),
-                    company: z.string(),
                   })
                 ).optional(),
                 state: z.any().optional(),
