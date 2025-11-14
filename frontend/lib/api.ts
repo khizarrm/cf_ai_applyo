@@ -266,6 +266,23 @@ export const agentsApi = {
 
     return response.json();
   },
+
+  /**
+   * Call orchestrator agent
+   */
+  orchestrator: async (data: { query: string }) => {
+    const response = await apiFetch('/api/agents/orchestrator', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || 'Failed to run orchestrator');
+    }
+
+    return response.json();
+  },
 };
 
 // ============= TYPES =============
@@ -296,4 +313,18 @@ export interface GeolocationData {
   colo?: string;
   latitude?: string;
   longitude?: string;
+}
+
+export interface OrchestratorPerson {
+  name: string;
+  role: string;
+  emails: string[];
+}
+
+export interface OrchestratorResponse {
+  company?: string;
+  people?: OrchestratorPerson[];
+  message?: string;
+  state?: unknown;
+  error?: string;
 }

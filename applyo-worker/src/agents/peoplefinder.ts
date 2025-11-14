@@ -55,7 +55,7 @@ class PeopleFinder extends Agent<CloudflareBindings> {
           model,
           tools,
           prompt:
-          `You are provided with a company name. Your task is to find **exactly 3 high-ranking individuals** (executives, founders, C-suite, senior leadership) at this company and identify the company website.
+          `You are provided with a company name. Your task is to find **exactly 3 high-ranking individuals** (founders first, executives, C-suite, senior leadership) at this company and identify the company website.
 
             ---
             ### Step 1: Understand the company
@@ -85,9 +85,10 @@ class PeopleFinder extends Agent<CloudflareBindings> {
 
             Focus on finding:
             - CEOs, Founders, Presidents
-            - C-suite executives (CTO, CFO, COO, CMO, CPO)
-            - VPs and senior leadership
-            - Board members (if no other info available)
+            - Then the following:
+              - C-suite executives (CTO, CFO, COO, CMO, CPO)
+              - VPs and senior leadership
+              - Board members (if no other info available)
 
             ---
 

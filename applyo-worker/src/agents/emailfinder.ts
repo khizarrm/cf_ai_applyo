@@ -236,14 +236,17 @@ Don't stop after using the tools, make sure to return some emails no matter what
       ? emailResult.employee_title.trim() 
       : (role && role.trim() !== "" ? role.trim() : "");
 
-    const finalResult = verifiedEmails.length > 0
+    // Limit to max 3 emails
+    const limitedEmails = verifiedEmails.slice(0, 3);
+
+    const finalResult = limitedEmails.length > 0
         ? {
-            emails: verifiedEmails,
+            emails: limitedEmails,
             company_name: companyName,
             website: domain,
             employee_name: employeeName,
             employee_title: finalEmployeeTitle,
-            verification_summary: `${verifiedEmails.length} out of ${emailResult.emails.length} emails verified`
+            verification_summary: `${limitedEmails.length} out of ${emailResult.emails.length} emails verified`
           }
         : {
             emails: [],
@@ -294,6 +297,9 @@ Don't stop after using the tools, make sure to return some emails no matter what
       } catch {
         emails = [result.email];
       }
+      
+      // Limit to max 3 emails
+      emails = emails.slice(0, 3);
       
       // Format to match EmailFinder response
       return {
