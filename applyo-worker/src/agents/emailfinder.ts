@@ -2,7 +2,7 @@ import { Agent } from "agents";
 import { openai } from "@ai-sdk/openai"
 import { generateText, stepCountIs } from "ai";
 import { tools } from "../lib/tools";
-import { verifyEmail } from "../lib/utils";
+import { verifyEmail, normalizeUrl } from "../lib/utils";
 import type { CloudflareBindings } from "../env.d";
 
 class EmailFinder extends Agent<CloudflareBindings> {
@@ -305,7 +305,7 @@ Don't stop after using the tools, make sure to return some emails no matter what
       return {
         emails,
         company_name: result.company_name,
-        website: result.website || "",
+        website: normalizeUrl(result.website) || "",
         employee_name: employeeName,
         employee_title: result.employee_title || "",
         verification_summary: `${emails.length} out of ${emails.length} emails verified`

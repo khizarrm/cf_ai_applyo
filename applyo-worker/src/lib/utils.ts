@@ -31,3 +31,47 @@ export async function verifyEmail(email: string, env: { ZEROBOUNCE_API_KEY: stri
 
     return data.status;
 }
+
+/**
+ * Normalizes a URL by adding https:// protocol if missing.
+ * Handles URLs like "apple.com" -> "https://apple.com"
+ * Returns null if the input is empty or invalid.
+ */
+export function normalizeUrl(url: string | null | undefined): string | null {
+    if (!url || url.trim() === "") {
+        return null;
+    }
+    
+    const trimmed = url.trim();
+    
+    // If it already has a protocol, return as is
+    if (trimmed.match(/^https?:\/\//i)) {
+        return trimmed;
+    }
+    
+    // Add https:// if missing
+    return `https://${trimmed}`;
+}
+
+/**
+ * Extracts the domain from a URL (with or without protocol).
+ * Returns null if the input is empty or invalid.
+ */
+export function extractDomain(url: string | null | undefined): string | null {
+    if (!url || url.trim() === "") {
+        return null;
+    }
+    
+    try {
+        const normalized = normalizeUrl(url);
+        if (!normalized) {
+            return null;
+        }
+        
+        const urlObj = new URL(normalized);
+        return urlObj.hostname;
+    } catch (e) {
+        console.error("Failed to extract domain from URL:", url, e);
+        return null;
+    }
+}

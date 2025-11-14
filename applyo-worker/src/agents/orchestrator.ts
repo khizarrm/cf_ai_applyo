@@ -4,6 +4,7 @@ import { generateText, tool, stepCountIs } from "ai";
 import { z } from "zod";
 import { getAgentByName } from "agents";
 import { searchWeb } from "../lib/tools";
+import { extractDomain, normalizeUrl } from "../lib/utils";
 import type { CloudflareBindings } from "../env.d";
 
 class Orchestrator extends Agent<CloudflareBindings> {
@@ -194,12 +195,9 @@ User query: ${query}`,
     const website = finalResult.website || "";
 
     if (website) {
-      try {
-        const url = new URL(website);
-        const domain = url.hostname;
+      const domain = extractDomain(website);
+      if (domain) {
         favicon = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
-      } catch (e) {
-        console.error("Failed to parse website URL:", e);
       }
     }
 
@@ -236,7 +234,7 @@ User query: ${query}`,
       // Format to match PeopleFinder response
       return {
         company: results.results[0].company_name,
-        website: results.results[0].website || "",
+        website: normalizeUrl(results.results[0].website) || "",
         people: results.results.map(row => ({
           name: row.employee_name,
           role: row.employee_title || ""
@@ -281,7 +279,7 @@ User query: ${query}`,
       return {
         emails,
         company_name: result.company_name,
-        website: result.website || "",
+        website: normalizeUrl(result.website) || "",
         employee_name: employeeName,
         employee_title: result.employee_title || "",
         verification_summary: `${emails.length} out of ${emails.length} emails verified`

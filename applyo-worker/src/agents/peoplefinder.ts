@@ -2,6 +2,7 @@ import { Agent } from "agents";
 import { openai } from "@ai-sdk/openai"
 import { generateText, stepCountIs } from "ai";
 import { tools } from "../lib/tools";
+import { normalizeUrl } from "../lib/utils";
 import type { CloudflareBindings } from "../env.d";
 
 class PeopleFinder extends Agent<CloudflareBindings> {
@@ -202,7 +203,7 @@ class PeopleFinder extends Agent<CloudflareBindings> {
       // Format to match PeopleFinder response
       return {
         company: results.results[0].company_name,
-        website: results.results[0].website || "",
+        website: normalizeUrl(results.results[0].website) || "",
         people: results.results.map(row => ({
           name: row.employee_name,
           role: row.employee_title || ""
