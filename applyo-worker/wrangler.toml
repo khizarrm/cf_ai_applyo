@@ -25,10 +25,6 @@ name = "Prospects"
 class_name = "Prospects"
 
 [[durable_objects.bindings]]
-name = "Profiler"
-class_name = "Profiler"
-
-[[durable_objects.bindings]]
 name = "PeopleFinder"
 class_name = "PeopleFinder"
 
@@ -38,19 +34,7 @@ class_name = "EmailFinder"
 
 [[migrations]]
 tag = "v1"
-new_sqlite_classes = ["Prospects"]
-
-[[migrations]]
-tag = "v2"
-new_sqlite_classes = ["Profiler"]
-
-[[migrations]]
-tag = "v3"
-new_sqlite_classes = ["PeopleFinder"]
-
-[[migrations]]
-tag = "v4"
-new_sqlite_classes = ["EmailFinder"]
+new_sqlite_classes = ["Prospects", "PeopleFinder", "EmailFinder"]
 
 # Secrets (use `wrangler secret put WEBSEARCH_API` to set)
 # WEBSEARCH_API = "wsa_b8da7b0023502adbb843f858e7478865b6c8049a0108dd4f8e637ba308de5940"

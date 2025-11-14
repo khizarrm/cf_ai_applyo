@@ -5,7 +5,6 @@ import { cors } from "hono/cors";
 import { createAuth } from "./auth";
 import type { CloudflareBindings } from "./env.d";
 import Prospects from "./agents/prospector";
-import Profiler from "./agents/profiler";
 import PeopleFinder from "./agents/peoplefinder";
 import EmailFinder from "./agents/emailfinder";
 import { Agent, AgentNamespace, getAgentByName, routeAgentRequest } from 'agents';
@@ -14,7 +13,6 @@ import { z } from "zod";
 
 interface Env {
   Prospects: AgentNamespace<Prospects>;
-  Profiler: AgentNamespace<Profiler>;
   PeopleFinder: AgentNamespace<PeopleFinder>;
   EmailFinder: AgentNamespace<EmailFinder>;
 }
@@ -109,66 +107,6 @@ class PublicHelloRoute extends OpenAPIRoute {
             timestamp: new Date().toISOString(),
             authenticated: false,
         };
-    }
-}
-
-class ProfilerRoute extends OpenAPIRoute {
-    schema = {
-      tags: ["Agents"],
-      summary: "Call Profiler Agent",
-      description: "Proxy request to the Profiler Agent (Cloudflare Agent)",
-      request: {
-        body: {
-          content: {
-            "application/json": {
-              schema: z.object({
-                resume: z.string().min(1).describe("Resume text to analyze"),
-              }),
-            },
-          },
-        },
-      },
-      responses: {
-        "200": {
-          description: "Agent response",
-          content: {
-            "application/json": {
-              schema: z.object({
-                message: z.string().optional(),
-                result: z.any().optional(),
-                state: z.any().optional(),
-              }),
-            },
-          },
-        },
-      },
-    };
-
-    async handle(c: any) {
-      const env = c.env as Env;
-      const auth = c.get("auth");
-
-      // Require authentication
-      const session = await auth.api.getSession({ headers: c.req.raw.headers });
-      if (!session?.session || !session?.user) {
-        return Response.json(
-          { error: "Unauthorized", message: "Please login first" },
-          { status: 401 }
-        );
-      }
-      const reqData = await this.getValidatedData<typeof this.schema>();
-      const body = JSON.stringify(reqData.body);
-
-      const agent = await getAgentByName(env.Profiler, "main");
-      const resp = await agent.fetch(
-        new Request("http://internal", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body,
-        })
-      );
-
-      return resp;
     }
 }
 
@@ -681,7 +619,6 @@ openapi.post("/api/protected/items", ProtectedCreateItemRoute);
 openapi.get("/api/protected/items", ProtectedListItemsRoute);
 openapi.delete("/api/protected/items/:id", ProtectedDeleteItemRoute);
 openapi.post("/api/agents/prospects", ProspectorRoute);
-openapi.post("/api/agents/profiler", ProfilerRoute);
 openapi.post("/api/agents/peoplefinder", PeopleFinderRoute);
 openapi.post("/api/agents/emailfinder", EmailFinderRoute);
 
@@ -1103,4 +1040,4 @@ export default {
     }
   };
 
-export { Prospects, Profiler, PeopleFinder, EmailFinder }; 
+export { Prospects, PeopleFinder, EmailFinder }; 

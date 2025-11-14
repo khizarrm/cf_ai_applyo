@@ -3,9 +3,6 @@ import { openai } from "@ai-sdk/openai"
 import { generateText, stepCountIs } from "ai";
 import { tools } from "../lib/tools";
 
-const model = openai("gpt-4o-2024-11-20");
-
-
 class PeopleFinder extends Agent {
   async onStart() {
     console.log('Agent started with state:', this.state);
@@ -15,6 +12,10 @@ class PeopleFinder extends Agent {
       const body = await _request.json() as { company?: string; website?: string };
       const company = body.company || "";
       const website = body.website || "";
+
+      const model = openai("gpt-4o-2024-11-20", {
+        apiKey: this.env.OPENAI_API_KEY,
+      });
 
       const result = await generateText({
           model,

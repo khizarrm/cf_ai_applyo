@@ -3,8 +3,6 @@ import { openai } from "@ai-sdk/openai"
 import { generateText, stepCountIs } from "ai";
 import { tools } from "../lib/tools";
 
-const model = openai("gpt-4o-2024-11-20");
-
 class Prospects extends Agent {
   async onStart() {
     console.log('Agent started with state:', this.state);
@@ -14,7 +12,11 @@ class Prospects extends Agent {
       const body = await _request.json() as { summary?: string; preferences?: string; location?: string };
       const summary = body.summary || "";
       const preferences = body.preferences || "";
-      const location = body.location || ""; 
+      const location = body.location || "";
+
+      const model = openai("gpt-4o-2024-11-20", {
+        apiKey: this.env.OPENAI_API_KEY,
+      });
 
       const result = await generateText({
           model,

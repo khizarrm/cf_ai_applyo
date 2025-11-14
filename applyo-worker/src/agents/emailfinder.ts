@@ -5,8 +5,6 @@ import { tools } from "../lib/tools";
 import { verifyEmail } from "../lib/utils";
 import type { CloudflareBindings } from "../env.d";
 
-const model = openai("gpt-4o-2024-11-20");
-
 class EmailFinder extends Agent<CloudflareBindings> {
   async onStart() {
     console.log('Agent started with state:', this.state);
@@ -18,6 +16,10 @@ class EmailFinder extends Agent<CloudflareBindings> {
       const lastName = body.lastName || "";
       const company = body.company || "";
       const domain = body.domain || "";
+
+      const model = openai("gpt-4o-2024-11-20", {
+        apiKey: this.env.OPENAI_API_KEY,
+      });
 
       const result = await generateText({
           model,
