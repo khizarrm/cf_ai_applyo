@@ -128,7 +128,8 @@ If the user asks for specific roles (e.g., "founder", "CEO"), only include peopl
 CRITICAL RULES:
 - Return ONLY the JSON object, no markdown code blocks, no explanations
 - If callPeopleFinder returns no people, return {"company": "...", "people": []}
-- If callEmailFinder returns no emails for a person, include them with "emails": []
+- **ONLY include people who have at least one verified email** - do NOT include people with empty emails arrays
+- If callEmailFinder returns no emails for a person, exclude them from the response entirely
 - Always return valid JSON that can be parsed
 
 User query: ${query}`,
@@ -155,6 +156,26 @@ User query: ${query}`,
 
       console.log("Cleaned text for parsing:", cleanText);
       finalResult = JSON.parse(cleanText);
+      
+      // Filter out people without verified emails
+      if (finalResult.people && Array.isArray(finalResult.people)) {
+        finalResult.people = finalResult.people.filter((person: any) => {
+          return person.emails && Array.isArray(person.emails) && person.emails.length > 0;
+        });
+      }
+      
+      // If no people with emails found, return simple response
+      if (!finalResult.people || !Array.isArray(finalResult.people) || finalResult.people.length === 0) {
+        return new Response(
+          JSON.stringify({
+            message: "no emails found",
+            state: this.state,
+          }),
+          {
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+      }
     } catch (e) {
       console.error("Failed to parse JSON:", e);
       console.error("Raw text response:", result.text);

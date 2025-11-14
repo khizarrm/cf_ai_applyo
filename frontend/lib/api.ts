@@ -322,8 +322,9 @@ export interface OrchestratorPerson {
 }
 
 export interface OrchestratorResponse {
-  company: string;
-  people: OrchestratorPerson[];
+  company?: string;
+  people?: OrchestratorPerson[];
+  message?: string;
   state?: unknown;
   error?: string;
 }
