@@ -1,8 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Loader2, Mail, Copy, Check } from 'lucide-react';
 import { agentsApi, type OrchestratorResponse } from '@/lib/api';
+
+const PLACEHOLDER_TEXTS = [
+  'gimme tim cooks email from apple',
+  'exa ai, the api search company',
+  'cohere',
+  'fouders from datacurve',
+  'ceo of poolside ai',
+];
 
 export default function Home() {
   const [query, setQuery] = useState('');
@@ -10,12 +18,35 @@ export default function Home() {
   const [result, setResult] = useState<OrchestratorResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copiedEmail, setCopiedEmail] = useState<string | null>(null);
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
+  const [isFocused, setIsFocused] = useState(false);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const copyToClipboard = async (email: string) => {
     await navigator.clipboard.writeText(email);
     setCopiedEmail(email);
     setTimeout(() => setCopiedEmail(null), 2000);
   };
+
+  useEffect(() => {
+    // Only rotate placeholders when input is empty and not focused
+    if (query.trim() === '' && !isFocused) {
+      intervalRef.current = setInterval(() => {
+        setPlaceholderIndex((prev) => (prev + 1) % PLACEHOLDER_TEXTS.length);
+      }, 3000); // Change every 3 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    }
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [query, isFocused]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,6 +118,24 @@ export default function Home() {
           );
           background-size: 1000px 100%;
         }
+
+        .slot-machine-container {
+          height: 100%;
+          overflow: hidden;
+        }
+
+        .slot-machine-reel {
+          transition: transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+          display: flex;
+          flex-direction: column;
+        }
+
+        .slot-machine-item {
+          height: 100%;
+          flex-shrink: 0;
+          display: flex;
+          align-items: center;
+        }
       `}</style>
 
       <main className="relative mx-auto w-full max-w-4xl px-4 sm:px-6 flex-grow flex items-start pt-8 sm:pt-12">
@@ -105,20 +154,42 @@ export default function Home() {
           <div className="mt-6 sm:mt-8 mx-auto max-w-3xl opacity-0 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
           <form onSubmit={handleSubmit} className="relative">
             <div className="relative flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-[#151515] border border-[#2a2a2a] rounded-3xl sm:rounded-full px-5 sm:px-6 py-4 sm:py-4 focus-within:border-[#4a4a4a] transition-all duration-500">
-              <input
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                    e.preventDefault();
-                    handleSubmit(e);
-                  }
-                }}
-                placeholder="find founders at datacurve"
-                disabled={loading}
-                className="flex-1 bg-transparent text-base sm:text-lg md:text-xl font-sans font-light tracking-tight placeholder:text-[#3a3a3a] focus:outline-none disabled:opacity-50 min-h-[44px] sm:min-h-0"
-              />
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onFocus={() => setIsFocused(true)}
+                  onBlur={() => setIsFocused(false)}
+                  onKeyDown={(e) => {
+                    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                      e.preventDefault();
+                      handleSubmit(e);
+                    }
+                  }}
+                  disabled={loading}
+                  className="w-full bg-transparent text-base sm:text-lg md:text-xl font-sans font-light tracking-tight focus:outline-none disabled:opacity-50 min-h-[44px] sm:min-h-0 relative z-10"
+                />
+                {query.trim() === '' && !isFocused && (
+                  <div className="absolute inset-0 pointer-events-none overflow-hidden slot-machine-container">
+                    <div 
+                      className="slot-machine-reel text-base sm:text-lg md:text-xl font-sans font-light tracking-tight text-[#3a3a3a] w-full"
+                      style={{ 
+                        transform: `translateY(-${placeholderIndex * (100 / PLACEHOLDER_TEXTS.length)}%)`
+                      }}
+                    >
+                      {PLACEHOLDER_TEXTS.map((text, idx) => (
+                        <div 
+                          key={idx} 
+                          className="slot-machine-item"
+                        >
+                          {text}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
 
               <button
                 type="submit"
