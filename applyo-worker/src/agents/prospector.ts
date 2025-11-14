@@ -22,8 +22,7 @@ class Prospects extends Agent {
       const preferences = body.preferences || "";
       const location = body.location || "";
 
-      
-
+      // @ts-expect-error - openai function accepts apiKey option, same pattern used in prospector/emailfinder
       const model = openai("gpt-4o-2024-11-20", {
         apiKey: this.env.OPENAI_API_KEY,
       });

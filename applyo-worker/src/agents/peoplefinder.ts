@@ -1,7 +1,10 @@
 import { Agent } from "agents";
-import Exa from "exa-js";
 import { normalizeUrl } from "../lib/utils";
 import type { CloudflareBindings } from "../env.d";
+import { tools } from "../lib/tools";
+import { openai } from "@ai-sdk/openai";
+import { generateText, tool, stepCountIs } from "ai";
+import { z } from "zod";
 
 class PeopleFinder extends Agent<CloudflareBindings> {
   
@@ -29,10 +32,8 @@ class PeopleFinder extends Agent<CloudflareBindings> {
         );
       }
 
-      // Check if people exist in DB first (case-insensitive by company name)
       const existingPeople = await this.checkPeopleInDB(company);
       if (existingPeople) {
-        console.log(`Found existing people in DB for ${company}`);
         return new Response(
           JSON.stringify({
             ...existingPeople,
@@ -44,149 +45,132 @@ class PeopleFinder extends Agent<CloudflareBindings> {
         );
       }
 
-      // Initialize Exa client
-      const exa = new Exa(this.env.EXA_API_KEY);
-
-      // Create detailed research prompt
-      let researchPrompt = `Find information about the company "${company}". `;
-      
-      if (website) {
-        researchPrompt += `The company's website is known to be: ${website}. `;
-      }
-      
-      researchPrompt += `Your task is to:
-1. Identify the official company website URL (if not already provided, find it)
-2. Find exactly 3 high-ranking individuals at this company, prioritizing in this order:
-   - Founders and co-founders
-   - CEOs, Presidents, and Chief Executives
-   - C-suite executives (CTO, CFO, COO, CMO, etc.)
-   - VPs and senior leadership
-
-For each person, provide:
-- Full legal name (first and last name)
-- Exact job title/role at the company
-
-${notes ? `Additional context to help with the search: ${notes}` : ''}
-
-Return the information in a structured JSON format:
-{
-  "company": "Company Name",
-  "website": "https://companywebsite.com",
-  "people": [
-    {
-      "name": "Full Name",
-      "role": "Exact Job Title"
-    }
-  ]
-}
-
-Focus on finding current, active leadership. Use the most recent and authoritative sources available.`;
-
       try {
-        // Create research task with structured output schema
-        const research = await exa.research.create({
-          instructions: researchPrompt,
-          model: "exa-research-fast",
-          outputSchema: {
-            type: "object",
-            required: ["company", "website", "people"],
-            additionalProperties: false,
-            properties: {
-              company: {
-                type: "string",
-                description: "The official company name"
-              },
-              website: {
-                type: "string",
-                description: "The official company website URL"
-              },
-              people: {
-                type: "array",
-                maxItems: 3,
-                description: "Array of up to 3 high-ranking individuals at the company",
-                items: {
-                  type: "object",
-                  required: ["name", "role"],
-                  additionalProperties: false,
-                  properties: {
-                    name: {
-                      type: "string",
-                      description: "Full legal name (first and last name)"
-                    },
-                    role: {
-                      type: "string",
-                      description: "Exact job title/role at the company"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        });
-
-        console.log(`Research created with ID: ${research.researchId}`);
-
-        // Stream research results
-        const stream = await exa.research.get(research.researchId, { stream: true });
+        const searchQuery = `"${company}" founder ceo "c-suite" leadership team site:${website || '*'}`;
         
-        let people: any = null;
-        
-        for await (const event of stream) {
-          console.log("Research event:", event);
-          
-          // Handle research-output event type (the actual event structure from Exa)
-          if ((event as any).eventType === 'research-output' && (event as any).output) {
-            const output = (event as any).output;
-            
-            // Prefer parsed output if available (already parsed JSON)
-            if (output.parsed) {
-              people = output.parsed;
-              console.log("Got parsed output:", people);
-              break; // We got structured data, no need to continue
-            } 
-            // Fallback to content (JSON string) if parsed is not available
-            else if (output.content) {
-              try {
-                people = JSON.parse(output.content);
-                console.log("Parsed content output:", people);
-                break;
-              } catch (e) {
-                console.error("Failed to parse content output:", e);
-              }
-            }
-          }
-          // Handle content events for streaming (optional, for logging)
-          else if ((event as any).type === "content" && (event as any).content) {
-            // Just log for debugging, we'll use the research-output event
-            console.log("Content chunk:", (event as any).content);
-          }
-        }
+        const searchResponse = await tools.searchWeb.execute({ 
+          query: searchQuery 
+        }, {
+          env: this.env
+        } as any);
 
-        // Handle case when no data was found
-        if (!people) {
-          people = {
-            company: company,
-            website: website || "",
-            people: [],
-            error: "No research output received from Exa Research API"
-          };
-        }
-        // Validate structure
-        else if (!people.error) {
-          if (!people.company || !Array.isArray(people.people)) {
-            people = {
+        const responseData = searchResponse as { results: Array<{ title: string; url: string; content: string }> };
+        const searchSnippets = responseData.results
+          .map(r => `
+          source url: ${r.url}
+          content: ${r.content}
+          ---`)
+          .join('\n');
+
+        if (!searchSnippets) {
+          return new Response(
+            JSON.stringify({
               company: company,
               website: website || "",
               people: [],
-              error: "Invalid response structure from research"
-            };
-          } else {
-            // Ensure we have at most 3 people
-            if (people.people.length > 3) {
-              people.people = people.people.slice(0, 3);
+              error: "No search results found",
+              state: this.state,
+            }),
+            {
+              headers: { "Content-Type": "application/json" },
             }
-          }
+          );
         }
+
+        const PeopleSchema = z.object({
+          company: z.string().describe("The official company name"),
+          website: z.union([z.string().url(), z.literal("")]).describe("The official company website URL (extract from search results if not provided, or empty string if not found)"),
+          people: z.array(
+            z.object({
+              name: z.string().describe("Full legal name (first and last name)"),
+              role: z.string().describe("Exact job title/role at the company")
+            })
+          ).max(3).describe("Array of up to 3 high-ranking individuals")
+        });
+
+        const extractionPrompt = `You are an expert data extraction assistant. Your task is to extract exactly 3 high-ranking individuals from the following search results.
+        ### Instructions
+        1. **Priority:** Find in this order: founders, CEOs, C-suite, VPs.
+        2. **Quantity:** Return a minimum of 3 people.
+        3. **Focus:** Find current, active leadership.
+        4. **Use searchWeb tool if needed:** If the search results below don't contain enough information to find 3 high-ranking individuals, use the searchWeb tool to search for more specific information (e.g., "${company} leadership team", "${company} executives", "${company} founders").
+        5. **Failure:** If you cannot find relevant people after using searchWeb if needed, the "people" array must be empty (e.g., "people": []).
+
+        ${notes ? `Additional context: ${notes}` : ''}
+
+        ### Initial Search Results:
+        """
+        ${searchSnippets}
+        """
+        `;
+
+        const searchWebWithEnv = tool({
+          description: "Search the web for information. Use this to find people, companies, or any other information online.",
+          inputSchema: z.object({
+            query: z.string().describe("The search query to find information on the web")
+          }),
+          execute: async ({ query }) => {
+            return await tools.searchWeb.execute({ query }, { env: this.env } as any);
+          }
+        });
+
+        const extractionTools = { searchWeb: searchWebWithEnv };
+
+        // @ts-expect-error - openai function accepts apiKey option, same pattern used in prospector/emailfinder
+        const model = openai("gpt-4o-mini", {
+          apiKey: this.env.OPENAI_API_KEY,
+        });
+
+        const extractionPromptWithSchema = `${extractionPrompt}
+        IMPORTANT: You must return ONLY valid JSON that matches this exact schema:
+        {
+          "company": "string",
+          "website": "string (URL or empty string)",
+          "people": [
+            {
+              "name": "string",
+              "role": "string"
+            }
+          ]
+        }
+
+        Return ONLY the JSON object, no markdown, no code blocks, no explanations.`;
+
+        const result = await generateText({
+          model,
+          tools: extractionTools,
+          toolChoice: "auto",
+          prompt: extractionPromptWithSchema,
+          stopWhen: stepCountIs(10)
+        });
+
+        let cleanText = result.text.trim();
+        if (cleanText.startsWith('```json')) {
+          cleanText = cleanText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+        } else if (cleanText.startsWith('```')) {
+          cleanText = cleanText.replace(/^```\s*/, '').replace(/\s*```$/, '');
+        }
+        
+        const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          cleanText = jsonMatch[0];
+        }
+
+        let extractedData;
+        try {
+          const parsed = JSON.parse(cleanText);
+          extractedData = PeopleSchema.parse(parsed);
+        } catch (e) {
+          console.error("Failed to parse or validate JSON:", e);
+          console.error("Raw text response:", result.text);
+          throw new Error(`Failed to extract structured data: ${e instanceof Error ? e.message : String(e)}`);
+        }
+
+        const people = {
+          company: extractedData.company,
+          website: extractedData.website || website || "",
+          people: extractedData.people
+        };
 
         return new Response(
           JSON.stringify({
@@ -199,7 +183,7 @@ Focus on finding current, active leadership. Use the most recent and authoritati
         );
 
       } catch (error) {
-        console.error("Exa Research API error:", error);
+        console.error("Search tool error:", error);
         return new Response(
           JSON.stringify({
             company: company,
@@ -217,7 +201,6 @@ Focus on finding current, active leadership. Use the most recent and authoritati
       }
   }
 
-  // Helper function to check people in DB by company name (case-insensitive)
   async checkPeopleInDB(companyName: string) {
     try {
       const results = await this.env.DB.prepare(`
@@ -235,7 +218,6 @@ Focus on finding current, active leadership. Use the most recent and authoritati
         return null;
       }
       
-      // Format to match PeopleFinder response
       return {
         company: results.results[0].company_name,
         website: normalizeUrl(results.results[0].website) || "",
