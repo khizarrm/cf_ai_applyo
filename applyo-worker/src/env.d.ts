@@ -1,10 +1,18 @@
-import type { D1Database, KVNamespace, DurableObjectNamespace } from "@cloudflare/workers-types";
+import type { D1Database, KVNamespace } from "@cloudflare/workers-types";
+import type { AgentNamespace } from "agents";
+import type Prospects from "./agents/prospector";
+import type PeopleFinder from "./agents/peoplefinder";
+import type EmailFinder from "./agents/emailfinder";
+import type Orchestrator from "./agents/orchestrator";
 
 export interface CloudflareBindings {
     DB: D1Database;
     KV?: KVNamespace;
     Prospects: AgentNamespace<Prospects>;
-    WEBSEARCH_API: string;
+    PeopleFinder: AgentNamespace<PeopleFinder>;
+    EmailFinder: AgentNamespace<EmailFinder>;
+    Orchestrator: AgentNamespace<Orchestrator>;
+    EXA_API_KEY: string;
     ZEROBOUNCE_API_KEY: string;
     OPENAI_API_KEY: string;
     GOOGLE_CLIENT_ID?: string;

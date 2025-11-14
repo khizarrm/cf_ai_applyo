@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Applyo - Job Application Tracker",
-  description: "Track and manage your job applications with ease",
+  title: "Email Finder - AI-Powered Email Discovery",
+  description: "Discover professional email addresses using AI-powered research",
 };
 
 export default function RootLayout({
