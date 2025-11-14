@@ -30,18 +30,24 @@ class Orchestrator extends Agent<CloudflareBindings> {
 
     // Tools for calling other agents
     const callPeopleFinder = tool({
-      description: "Find high-ranking people (executives, founders, C-suite) at a specific company. Returns company name, website, and 3 people with their names and roles.",
+      description: "Find high-ranking people (executives, founders, C-suite) at a specific company. Returns company name, website, and 3 people with their names and roles. You can provide additional context like known website or notes to help with the search.",
       inputSchema: z.object({
-        company: z.string().describe("Company name"),
+        company: z.string().describe("Company name (required)"),
+        website: z.string().optional().describe("Known company website URL (optional, helps improve search accuracy)"),
+        notes: z.string().optional().describe("Additional context or notes about the company or search requirements (optional, e.g., 'focus on founders', 'tech company', 'looking for CTO')"),
       }),
-      execute: async ({ company }) => {
+      execute: async ({ company, website, notes }) => {
         try {
           const agent = await getAgentByName(this.env.PeopleFinder, "main");
+          const requestBody: { company: string; website?: string; notes?: string } = { company };
+          if (website) requestBody.website = website;
+          if (notes) requestBody.notes = notes;
+          
           const resp = await agent.fetch(
             new Request("http://internal", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ company }),
+              body: JSON.stringify(requestBody),
             })
           );
           const result = await resp.json();
@@ -51,7 +57,7 @@ class Orchestrator extends Agent<CloudflareBindings> {
           console.error("Error calling PeopleFinder:", error);
           return { 
             company: company,
-            website: "",
+            website: website || "",
             people: [], 
             error: error instanceof Error ? error.message : String(error) 
           };
@@ -98,21 +104,28 @@ class Orchestrator extends Agent<CloudflareBindings> {
       prompt: `You are an orchestrator that finds emails for people at companies.
 
 Available tools:
-1. **callPeopleFinder** - Find executives/leaders at a specific company (returns company name, website, and 3 people with name and role)
+1. **callPeopleFinder** - Find executives/leaders at a specific company (returns company name, website, and 3 people with name and role). You can optionally provide:
+   - website: If the company website is known from the query or previous searches, pass it to improve accuracy
+   - notes: Additional context about the company if the name isnt enough
 2. **callEmailFinder** - Find email addresses for a specific person (needs firstName, lastName, company, domain)
 3. **searchWeb** - Run web searches (only use this when a specific person is already provided, to confirm company websites/domains and validate that the person truly works there)
 
 Decision flow:
 1. Always extract the company name from the query.
-2. Check if the user already named at least one specific person.
+2. Extract any known website URL from the query if mentioned (e.g., "datacurve.com" or "https://datacurve.com").
+3. Extract any role-specific requirements or notes from the query (e.g., "founders", "CTO", "executives").
+4. Check if the user already named at least one specific person.
    - If a person is provided (e.g., "serena ge from datacurve"), **do not** call callPeopleFinder. Instead, use the available info plus searchWeb (this is the only time you may call searchWeb) to gather any missing details (website/domain, role confirmation) and then call callEmailFinder directly.
-   - If no person is provided (e.g., "find founder emails at datacurve"), call callPeopleFinder to identify up to 3 relevant leaders before moving on to email lookups.
-3. For every person you need emails for:
+   - If no person is provided (e.g., "find founder emails at datacurve"), call callPeopleFinder with:
+     - company: the company name
+     - website: if known from the query
+     - notes: if there are specific role requirements (e.g., "focus on founders and C-suite executives")
+5. For every person you need emails for:
    - Split their name into firstName and lastName.
    - Use any known website/domain (from the query or PeopleFinder) to derive the domain (e.g., "https://datacurve.com" -> "datacurve.com").
    - If no website is available and a specific person was provided, first run searchWeb (only once per person if needed) to confirm the domain. If searchWeb cannot find it, infer the domain from the company name (e.g., "datacurve" -> "datacurve.com") and note when it is inferred. If no person was provided, do not call searchWeb—fall back to inference only after PeopleFinder fails to supply a website.
    - Call callEmailFinder with firstName, lastName, company, domain to verify emails.
-4. Return ONLY valid JSON with this structure (IMPORTANT: preserve the website field from callPeopleFinder if available):
+6. Return ONLY valid JSON with this structure (IMPORTANT: preserve the website field from callPeopleFinder if available):
 {
   "company": "Company Name",
   "website": "https://company.com",

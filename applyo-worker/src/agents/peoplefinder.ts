@@ -1,7 +1,5 @@
 import { Agent } from "agents";
-import { openai } from "@ai-sdk/openai"
-import { generateText, stepCountIs } from "ai";
-import { tools } from "../lib/tools";
+import Exa from "exa-js";
 import { normalizeUrl } from "../lib/utils";
 import type { CloudflareBindings } from "../env.d";
 
@@ -11,22 +9,20 @@ class PeopleFinder extends Agent<CloudflareBindings> {
     console.log('ppl finder started with state:', this.state);
   }
 
-  async onBeforeTool({ name, args }) {
-    console.log("[TOOL_CALL]", name, args);
-  }
-
-  async onAfterTool({ name, result }) {
-    console.log("[TOOL_RESULT]", name, JSON.stringify(result, null, 2));
-  }
-
   async onRequest(_request: Request): Promise<Response> {
-      const body = await _request.json() as { company?: string };
+      const body = await _request.json() as {
+        company?: string;
+        website?: string;
+        notes?: string;
+      };
       const company = body.company || "";
-      
+      const website = body.website || "";
+      const notes = body.notes || "";
+
       if (!company) {
         return new Response(
           JSON.stringify({ error: "Company name is required" }),
-          { 
+          {
             status: 400,
             headers: { "Content-Type": "application/json" }
           }
@@ -48,138 +44,177 @@ class PeopleFinder extends Agent<CloudflareBindings> {
         );
       }
 
-      const model = openai("gpt-4o-2024-11-20", {
-        apiKey: this.env.OPENAI_API_KEY,
-      });
+      // Initialize Exa client
+      const exa = new Exa(this.env.EXA_API_KEY);
 
-      const result = await generateText({
-          model,
-          tools,
-          prompt:
-          `You are provided with a company name. Your task is to find **exactly 3 high-ranking individuals** (founders first, executives, C-suite, senior leadership) at this company and identify the company website.
-
-            ---
-            ### Step 1: Understand the company
-            From the given company name, infer:
-            - Industry and sector
-            - Company size (startup, mid-size, enterprise)
-            - Likely organizational structure
-            ---
-            ### Step 2: Find company website
-            Use the **searchWeb** tool to find the official company website. Search for:
-            - "company name official website"
-            - "company name.com"
-            - "company name company website"
-
-            ---
-            ### Step 3: Search for people
-            Use the **searchWeb** tool **multiple times** (at least 3-5 searches) to find real people who work at this company. Try different search strategies:
-
-            1. Search for "company name CEO founder executives leadership team"
-            2. Search for "company name management team senior leadership"
-            3. Search for "company name about us team page"
-            4. Search for "company name LinkedIn executives officers"
-            5. Search for specific roles like "company name CTO VP Engineering"
-            6. If you found a website, search for "site:website CEO founder executives leadership team"
-
-            **IMPORTANT**: Use the searchWeb tool **several times** with different queries to ensure you find accurate, real people. Don't settle for the first search result. If you found a website, prioritize searching within that domain.
-
-            Focus on finding:
-            - CEOs, Founders, Presidents
-            - Then the following:
-              - C-suite executives (CTO, CFO, COO, CMO, CPO)
-              - VPs and senior leadership
-              - Board members (if no other info available)
-
-            ---
-
-            ### Step 4: Return structured JSON
-            **CRITICAL**: Respond with ONLY valid JSON. No markdown, no explanations, no code blocks.
-
-            Return exactly this structure:
-
-            {
-              "company": "Company Name",
-              "website": "https://companywebsite.com", #ENSURE THIS IS THE WEBSITE OF THE COMPANY
-              "people": [
-                {
-                  "name": "Full Name",
-                  "role": "Exact Job Title"
-                }
-              ]
-            }
-
-            Rules:
-            - Include up to 3 people max.
-            - Ensure all people are real and verifiable from your searches.
-            - Use full names (not just first names or initials).
-            - Use accurate job titles from your research.
-            - Include the company name exactly as provided and website int eh response.
-            - Return ONLY the JSON object, nothing else.
-            - Do not wrap in markdown code blocks.
-            - Do not add any explanatory text before or after the JSON.
-
-          <company_name>${company}</company_name>
-          `,
-          toolChoice: "auto",
-          stopWhen: stepCountIs(20),
-          temperature: 0.4
-      });
-
-    let people;
-    try {
-        let cleanText = result.text.trim();
-
-        // Remove markdown code blocks if present
-        if (cleanText.startsWith('```json')) {
-            cleanText = cleanText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-        } else if (cleanText.startsWith('```')) {
-            cleanText = cleanText.replace(/^```\s*/, '').replace(/\s*```$/, '');
-        }
-
-        const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-            cleanText = jsonMatch[0];
-        }
-
-        console.log("Cleaned text for parsing:", cleanText);
-        console.log("Tool calls count:", result.toolCalls?.length || 0);
-        if (result.toolCalls && result.toolCalls.length > 0) {
-          console.log("Tool calls:", result.toolCalls.map(tc => ({
-            toolName: 'toolName' in tc ? tc.toolName : 'unknown',
-            toolCallId: 'toolCallId' in tc ? tc.toolCallId : 'unknown'
-          })));
-        }
-        if (result.toolResults && result.toolResults.length > 0) {
-          console.log("Tool results:", result.toolResults.map((tr, idx) => ({
-            index: idx,
-            toolCallId: 'toolCallId' in tr ? tr.toolCallId : 'unknown',
-            result: 'result' in tr ? JSON.stringify(tr.result, null, 2) : 'no result'
-          })));
-        }
-        people = JSON.parse(cleanText);
-    } catch (e) {
-        console.error("Failed to parse JSON:", e);
-        console.error("Raw text response:", result.text);
-        people = {
-            company: company,
-            website: "",
-            people: [],
-            error: "Failed to parse response",
-            rawText: result.text,
-            parseError: e instanceof Error ? e.message : String(e)
-        };
-    }
-
-    return new Response(
-      JSON.stringify({
-        ...people,
-        state: this.state,
-      }),
-      {
-        headers: { "Content-Type": "application/json" },
+      // Create detailed research prompt
+      let researchPrompt = `Find information about the company "${company}". `;
+      
+      if (website) {
+        researchPrompt += `The company's website is known to be: ${website}. `;
       }
-    );
+      
+      researchPrompt += `Your task is to:
+1. Identify the official company website URL (if not already provided, find it)
+2. Find exactly 3 high-ranking individuals at this company, prioritizing in this order:
+   - Founders and co-founders
+   - CEOs, Presidents, and Chief Executives
+   - C-suite executives (CTO, CFO, COO, CMO, etc.)
+   - VPs and senior leadership
+
+For each person, provide:
+- Full legal name (first and last name)
+- Exact job title/role at the company
+
+${notes ? `Additional context to help with the search: ${notes}` : ''}
+
+Return the information in a structured JSON format:
+{
+  "company": "Company Name",
+  "website": "https://companywebsite.com",
+  "people": [
+    {
+      "name": "Full Name",
+      "role": "Exact Job Title"
+    }
+  ]
+}
+
+Focus on finding current, active leadership. Use the most recent and authoritative sources available.`;
+
+      try {
+        // Create research task with structured output schema
+        const research = await exa.research.create({
+          instructions: researchPrompt,
+          model: "exa-research-fast",
+          outputSchema: {
+            type: "object",
+            required: ["company", "website", "people"],
+            additionalProperties: false,
+            properties: {
+              company: {
+                type: "string",
+                description: "The official company name"
+              },
+              website: {
+                type: "string",
+                description: "The official company website URL"
+              },
+              people: {
+                type: "array",
+                maxItems: 3,
+                description: "Array of up to 3 high-ranking individuals at the company",
+                items: {
+                  type: "object",
+                  required: ["name", "role"],
+                  additionalProperties: false,
+                  properties: {
+                    name: {
+                      type: "string",
+                      description: "Full legal name (first and last name)"
+                    },
+                    role: {
+                      type: "string",
+                      description: "Exact job title/role at the company"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        });
+
+        console.log(`Research created with ID: ${research.researchId}`);
+
+        // Stream research results
+        const stream = await exa.research.get(research.researchId, { stream: true });
+        
+        let people: any = null;
+        
+        for await (const event of stream) {
+          console.log("Research event:", event);
+          
+          // Handle research-output event type (the actual event structure from Exa)
+          if ((event as any).eventType === 'research-output' && (event as any).output) {
+            const output = (event as any).output;
+            
+            // Prefer parsed output if available (already parsed JSON)
+            if (output.parsed) {
+              people = output.parsed;
+              console.log("Got parsed output:", people);
+              break; // We got structured data, no need to continue
+            } 
+            // Fallback to content (JSON string) if parsed is not available
+            else if (output.content) {
+              try {
+                people = JSON.parse(output.content);
+                console.log("Parsed content output:", people);
+                break;
+              } catch (e) {
+                console.error("Failed to parse content output:", e);
+              }
+            }
+          }
+          // Handle content events for streaming (optional, for logging)
+          else if ((event as any).type === "content" && (event as any).content) {
+            // Just log for debugging, we'll use the research-output event
+            console.log("Content chunk:", (event as any).content);
+          }
+        }
+
+        // Handle case when no data was found
+        if (!people) {
+          people = {
+            company: company,
+            website: website || "",
+            people: [],
+            error: "No research output received from Exa Research API"
+          };
+        }
+        // Validate structure
+        else if (!people.error) {
+          if (!people.company || !Array.isArray(people.people)) {
+            people = {
+              company: company,
+              website: website || "",
+              people: [],
+              error: "Invalid response structure from research"
+            };
+          } else {
+            // Ensure we have at most 3 people
+            if (people.people.length > 3) {
+              people.people = people.people.slice(0, 3);
+            }
+          }
+        }
+
+        return new Response(
+          JSON.stringify({
+            ...people,
+            state: this.state,
+          }),
+          {
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+
+      } catch (error) {
+        console.error("Exa Research API error:", error);
+        return new Response(
+          JSON.stringify({
+            company: company,
+            website: website || "",
+            people: [],
+            error: "Failed to complete research",
+            errorMessage: error instanceof Error ? error.message : String(error),
+            state: this.state,
+          }),
+          {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+      }
   }
 
   // Helper function to check people in DB by company name (case-insensitive)

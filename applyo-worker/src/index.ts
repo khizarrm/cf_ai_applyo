@@ -202,13 +202,15 @@ class PeopleFinderRoute extends OpenAPIRoute {
     schema = {
       tags: ["Agents"],
       summary: "Call PeopleFinder Agent",
-      description: "Find high-ranking individuals at a company using the PeopleFinder Agent",
+      description: "Find high-ranking individuals at a company. The agent will search for founders, executives, and C-suite leaders.",
       request: {
         body: {
           content: {
             "application/json": {
               schema: z.object({
                 company: z.string().min(1).describe("Company name to search for people"),
+                website: z.string().optional().describe("Optional: Company website URL if already known"),
+                notes: z.string().optional().describe("Optional: Additional context about the company to help with search"),
               }),
             },
           },
@@ -216,7 +218,7 @@ class PeopleFinderRoute extends OpenAPIRoute {
       },
       responses: {
         "200": {
-          description: "Agent response with company name, website, and 3 high-ranking individuals",
+          description: "Agent response with company name, website, and up to 3 high-ranking individuals",
           content: {
             "application/json": {
               schema: z.object({
@@ -230,6 +232,18 @@ class PeopleFinderRoute extends OpenAPIRoute {
                 ).optional(),
                 state: z.any().optional(),
                 error: z.string().optional(),
+                rawText: z.string().optional(),
+                parseError: z.string().optional(),
+              }),
+            },
+          },
+        },
+        "400": {
+          description: "Bad request - missing required company parameter",
+          content: {
+            "application/json": {
+              schema: z.object({
+                error: z.string(),
               }),
             },
           },

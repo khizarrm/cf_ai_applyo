@@ -15,11 +15,14 @@ interface ExaApiResponse {
 }
 
 export const searchWeb = tool({
+
     description: "Search the web for information. Use this to find people, companies, or any other information online.", 
     inputSchema: z.object({
         query: z.string().describe("The search query to find information on the web")
     }),
+  
     execute: async ({ query }, options) => {
+        console.log("using search tool")
         const env = ((options as any)?.env ?? process.env) as {
             EXA_API_KEY?: string;
         };
