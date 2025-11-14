@@ -2,81 +2,80 @@ import { Agent } from "agents";
 import { openai } from "@ai-sdk/openai"
 import { generateText, stepCountIs } from "ai";
 import { tools } from "../lib/tools";
+import type { CloudflareBindings } from "../env.d";
 
-class PeopleFinder extends Agent {
+class PeopleFinder extends Agent<CloudflareBindings> {
+  
   async onStart() {
-    console.log('Agent started with state:', this.state);
+    console.log('ppl finder started with state:', this.state);
+  }
+
+  async onBeforeTool({ name, args }) {
+    console.log("[TOOL_CALL]", name, args);
+  }
+
+  async onAfterTool({ name, result }) {
+    console.log("[TOOL_RESULT]", name, result);
   }
 
   async onRequest(_request: Request): Promise<Response> {
       const body = await _request.json() as { company?: string; website?: string };
       const company = body.company || "";
       const website = body.website || "";
+      
 
-      const model = openai("gpt-4o-2024-11-20");
+      const model = openai("gpt-4o-2024-11-20", {
+        apiKey: this.env.OPENAI_API_KEY,
+      });
 
       const result = await generateText({
           model,
           tools,
           prompt:
-          `You are provided with a company name and website. Your task is to find **exactly 3 high-ranking individuals** (executives, founders, C-suite, senior leadership) at this company.
-            ---
-            ### Step 1: Understand the company
-            From the given company name, infer:
-            - Industry and sector
-            - Company size (startup, mid-size, enterprise)
-            - Likely organizational structure
-            ---
-            ### Step 2: Search for people
-            Use the **searchWeb** tool **multiple times** (at least 3-5 searches) to find real people who work at this company. Try different search strategies:
+          `Your goal is to identify 3 real high-ranking executives for the given company.
 
-            1. Search for "site:website CEO founder executives leadership team" (if website provided)
-            2. Search for "company name CEO founder executives leadership team"
-            3. Search for "company name management team senior leadership"
-            4. Search for "company name about us team page"
-            5. Search for "company name LinkedIn executives officers"
-            6. Search for specific roles like "company name CTO VP Engineering"
+You MUST use the searchWeb tool for all information gathering. 
+Make multiple searchWeb calls with different queries such as:
+- "<Company> CEO"
+- "<Company> founders"
+- "<Company> executives"
+- "<Company> leadership team"
+- "site:${website} leadership" (if website provided)
 
-            **IMPORTANT**: Use the searchWeb tool **several times** with different queries to ensure you find accurate, real people. Don't settle for the first search result. If a website is provided, prioritize searching within that domain.
+After collecting results:
+- Extract real names + titles.
+- If you find fewer than 3 people, return only the ones you confirmed.
+- If no valid people are found, return an empty array.
 
-            Focus on finding:
-            - CEOs, Founders, Presidents
-            - C-suite executives (CTO, CFO, COO, CMO, CPO)
-            - VPs and senior leadership
-            - Board members (if no other info available)
+CRITICAL:
+- You MUST return valid JSON ONLY.
+- NEVER return explanations, apologies, reasoning, or fallback messages.
+- NEVER say "cannot proceed" or similar.
+- Even if all searches fail, you must still return:
 
-            ---
+{
+  "people": []
+}
 
-            ### Step 3: Return structured JSON
-            **CRITICAL**: Respond with ONLY valid JSON. No markdown, no explanations, no code blocks.
+Final output format ONLY:
 
-            Return exactly this structure:
+{
+  "people": [
+    {
+      "name": "Full Name",
+      "role": "Exact Job Title",
+      "company": "Company Name"
+    }
+  ]
+}
 
-            {
-              "people": [
-                {
-                  "name": "Full Name",
-                  "role": "Exact Job Title",
-                  "company": "Company Name"
-                }
-              ]
-            }
+Company: ${company}
+Website: ${website || "Not provided"}
 
-            Rules:
-            - Include exactly 3 people (not more, not less).
-            - Ensure all people are real and verifiable from your searches.
-            - Use full names (not just first names or initials).
-            - Use accurate job titles from your research.
-            - Return ONLY the JSON object, nothing else.
-            - Do not wrap in markdown code blocks.
-            - Do not add any explanatory text before or after the JSON.
-
-          <company_name>${company}</company_name>
-          <company_website>${website}</company_website>
           `,
           toolChoice: "auto",
-          stopWhen: stepCountIs(10),
-          temperature: 0
+          stopWhen: stepCountIs(20),
+          temperature: 0.4
       });
 
     let people;

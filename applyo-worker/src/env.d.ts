@@ -12,7 +12,7 @@ export interface CloudflareBindings {
     PeopleFinder: AgentNamespace<PeopleFinder>;
     EmailFinder: AgentNamespace<EmailFinder>;
     Orchestrator: AgentNamespace<Orchestrator>;
-    WEBSEARCH_API: string;
+    EXA_API_KEY: string;
     ZEROBOUNCE_API_KEY: string;
     OPENAI_API_KEY: string;
     GOOGLE_CLIENT_ID?: string;
