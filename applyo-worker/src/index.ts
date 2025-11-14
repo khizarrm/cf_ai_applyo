@@ -34,7 +34,7 @@ app.use(
                 "http://localhost:3000",
                 "http://localhost:3001",
                 "https://applyo-frontend.applyo.workers.dev",
-                "https://cf-ai-applyo.pages.dev"
+                "https://outreach-umber.vercel.app"
             ];
             return allowed.includes(origin) || /^http:\/\/localhost:\d+$/.test(origin) ? origin : allowed[0];
         },

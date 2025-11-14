@@ -111,9 +111,10 @@ Decision flow:
    - Use any known website/domain (from the query or PeopleFinder) to derive the domain (e.g., "https://datacurve.com" -> "datacurve.com").
    - If no website is available and a specific person was provided, first run searchWeb (only once per person if needed) to confirm the domain. If searchWeb cannot find it, infer the domain from the company name (e.g., "datacurve" -> "datacurve.com") and note when it is inferred. If no person was provided, do not call searchWeb—fall back to inference only after PeopleFinder fails to supply a website.
    - Call callEmailFinder with firstName, lastName, company, domain to verify emails.
-4. Return ONLY valid JSON with this structure:
+4. Return ONLY valid JSON with this structure (IMPORTANT: preserve the website field from callPeopleFinder if available):
 {
   "company": "Company Name",
+  "website": "https://company.com",
   "people": [
     {
       "name": "Full Name",
@@ -188,9 +189,24 @@ User query: ${query}`,
       };
     }
 
+    // Add favicon to response
+    let favicon = null;
+    const website = finalResult.website || "";
+
+    if (website) {
+      try {
+        const url = new URL(website);
+        const domain = url.hostname;
+        favicon = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+      } catch (e) {
+        console.error("Failed to parse website URL:", e);
+      }
+    }
+
     return new Response(
       JSON.stringify({
         ...finalResult,
+        favicon,
         state: this.state,
       }),
       {
