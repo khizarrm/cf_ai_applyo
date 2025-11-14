@@ -7,6 +7,7 @@ import type { CloudflareBindings } from "./env.d";
 import Prospects from "./agents/prospector";
 import PeopleFinder from "./agents/peoplefinder";
 import EmailFinder from "./agents/emailfinder";
+import Orchestrator from "./agents/orchestrator";
 import { Agent, AgentNamespace, getAgentByName, routeAgentRequest } from 'agents';
 import { z } from "zod";
 
@@ -15,6 +16,7 @@ interface Env {
   Prospects: AgentNamespace<Prospects>;
   PeopleFinder: AgentNamespace<PeopleFinder>;
   EmailFinder: AgentNamespace<EmailFinder>;
+  Orchestrator: AgentNamespace<Orchestrator>;
 }
 
 type Variables = {
@@ -300,6 +302,65 @@ class EmailFinderRoute extends OpenAPIRoute {
 
       // manually call the agent
       const agent = await getAgentByName(env.EmailFinder, "main");
+      const resp = await agent.fetch(
+        new Request("http://internal", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body,
+        })
+      );
+
+      return resp;
+    }
+  }
+
+class OrchestratorRoute extends OpenAPIRoute {
+    schema = {
+      tags: ["Agents"],
+      summary: "Call Orchestrator Agent",
+      description: "Find emails for people at a company. Takes a query like 'find founder emails at datacurve' or just 'datacurve'",
+      request: {
+        body: {
+          content: {
+            "application/json": {
+              schema: z.object({
+                query: z.string().min(1).describe("Query like 'find founder emails at datacurve' or just 'datacurve'"),
+              }),
+            },
+          },
+        },
+      },
+      responses: {
+        "200": {
+          description: "Agent response with people and their emails",
+          content: {
+            "application/json": {
+              schema: z.object({
+                company: z.string().describe("Company name"),
+                people: z.array(
+                  z.object({
+                    name: z.string().describe("Person's full name"),
+                    role: z.string().describe("Job title"),
+                    emails: z.array(z.string()).describe("List of email addresses"),
+                  })
+                ).describe("List of people with their emails"),
+                state: z.any().optional(),
+                error: z.string().optional(),
+              }),
+            },
+          },
+        },
+      },
+    };
+
+    async handle(c: any) {
+      const env = c.env;
+
+      const reqData = await this.getValidatedData<typeof this.schema>();
+      const body = JSON.stringify(reqData.body);
+
+      // manually call the agent
+      const agent = await getAgentByName(env.Orchestrator, "main");
       const resp = await agent.fetch(
         new Request("http://internal", {
           method: "POST",
@@ -621,6 +682,7 @@ openapi.delete("/api/protected/items/:id", ProtectedDeleteItemRoute);
 openapi.post("/api/agents/prospects", ProspectorRoute);
 openapi.post("/api/agents/peoplefinder", PeopleFinderRoute);
 openapi.post("/api/agents/emailfinder", EmailFinderRoute);
+openapi.post("/api/agents/orchestrator", OrchestratorRoute);
 
 
 // ============= END DEMO API ROUTES =============
@@ -1040,4 +1102,4 @@ export default {
     }
   };
 
-export { Prospects, PeopleFinder, EmailFinder }; 
+export { Prospects, PeopleFinder, EmailFinder, Orchestrator }; 

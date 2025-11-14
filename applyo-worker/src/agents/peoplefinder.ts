@@ -13,9 +13,7 @@ class PeopleFinder extends Agent {
       const company = body.company || "";
       const website = body.website || "";
 
-      const model = openai("gpt-4o-2024-11-20", {
-        apiKey: this.env.OPENAI_API_KEY,
-      });
+      const model = openai("gpt-4o-2024-11-20");
 
       const result = await generateText({
           model,

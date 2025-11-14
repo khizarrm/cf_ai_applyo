@@ -1,3 +1,176 @@
-//interprets user input and stuff, mapping it to where it needs to go 
 import { Agent } from "agents";
+import { openai } from "@ai-sdk/openai";
+import { generateText, tool, stepCountIs } from "ai";
+import { z } from "zod";
+import { getAgentByName } from "agents";
+import type { CloudflareBindings } from "../env.d";
 
+class Orchestrator extends Agent<CloudflareBindings> {
+  async onStart() {
+    console.log('Orchestrator agent started');
+  }
+
+  async onRequest(_request: Request): Promise<Response> {
+    const body = await _request.json() as { query?: string };
+    const query = body.query || "";
+
+    if (!query) {
+      return new Response(
+        JSON.stringify({ error: "Query is required" }),
+        { 
+          status: 400,
+          headers: { "Content-Type": "application/json" }
+        }
+      );
+    }
+
+    const model = openai("gpt-4o-2024-11-20");
+
+    // Tools for calling other agents
+    const callPeopleFinder = tool({
+      description: "Find high-ranking people (executives, founders, C-suite) at a specific company. Returns 3 people with their names, roles, and company.",
+      inputSchema: z.object({
+        company: z.string().describe("Company name"),
+        website: z.string().optional().describe("Company website URL (optional, helps with more accurate searches)"),
+      }),
+      execute: async ({ company, website }) => {
+        try {
+          const agent = await getAgentByName(this.env.PeopleFinder, "main");
+          const resp = await agent.fetch(
+            new Request("http://internal", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ company, website }),
+            })
+          );
+          const result = await resp.json();
+          console.log("PeopleFinder result:", result);
+          return result;
+        } catch (error) {
+          console.error("Error calling PeopleFinder:", error);
+          return { 
+            people: [], 
+            error: error instanceof Error ? error.message : String(error) 
+          };
+        }
+      }
+    });
+
+    const callEmailFinder = tool({
+      description: "Find email addresses for a specific person at a company. Returns verified emails.",
+      inputSchema: z.object({
+        firstName: z.string().describe("Person's first name"),
+        lastName: z.string().describe("Person's last name"),
+        company: z.string().describe("Company name"),
+        domain: z.string().describe("Company domain (e.g., datacurve.com)"),
+      }),
+      execute: async ({ firstName, lastName, company, domain }) => {
+        try {
+          const agent = await getAgentByName(this.env.EmailFinder, "main");
+          const resp = await agent.fetch(
+            new Request("http://internal", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ firstName, lastName, company, domain }),
+            })
+          );
+          const result = await resp.json();
+          console.log("EmailFinder result:", result);
+          return result;
+        } catch (error) {
+          console.error("Error calling EmailFinder:", error);
+          return { 
+            emails: [], 
+            error: error instanceof Error ? error.message : String(error) 
+          };
+        }
+      }
+    });
+
+    const tools = { callPeopleFinder, callEmailFinder };
+
+    const result = await generateText({
+      model,
+      tools,
+      prompt: `You are an orchestrator that finds emails for people at companies.
+
+Available tools:
+1. **callPeopleFinder** - Find executives/leaders at a specific company (returns 3 people with name, role, company)
+2. **callEmailFinder** - Find email addresses for a specific person (needs firstName, lastName, company, domain)
+
+When user asks for emails (e.g., "find founder emails at datacurve" or just "datacurve"):
+1. Extract the company name from the query
+2. Call callPeopleFinder with the company name
+3. For each person found:
+   - Split their name into firstName and lastName
+   - Infer the domain from the company name (e.g., "datacurve" -> "datacurve.com", "shopify" -> "shopify.com")
+   - Call callEmailFinder with firstName, lastName, company, domain
+4. Return ONLY valid JSON with this structure:
+{
+  "company": "Company Name",
+  "people": [
+    {
+      "name": "Full Name",
+      "role": "Job Title",
+      "emails": ["email1@domain.com", "email2@domain.com"]
+    }
+  ]
+}
+
+If the user asks for specific roles (e.g., "founder", "CEO"), only include people matching those roles.
+
+CRITICAL RULES:
+- Return ONLY the JSON object, no markdown code blocks, no explanations
+- If callPeopleFinder returns no people, return {"company": "...", "people": []}
+- If callEmailFinder returns no emails for a person, include them with "emails": []
+- Always return valid JSON that can be parsed
+
+User query: ${query}`,
+      toolChoice: "auto",
+      stopWhen: stepCountIs(15)
+    });
+
+    let finalResult;
+    try {
+      let cleanText = result.text.trim();
+      
+      // Remove markdown code blocks if present
+      if (cleanText.startsWith('```json')) {
+        cleanText = cleanText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      } else if (cleanText.startsWith('```')) {
+        cleanText = cleanText.replace(/^```\s*/, '').replace(/\s*```$/, '');
+      }
+
+      // Extract JSON object
+      const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        cleanText = jsonMatch[0];
+      }
+
+      console.log("Cleaned text for parsing:", cleanText);
+      finalResult = JSON.parse(cleanText);
+    } catch (e) {
+      console.error("Failed to parse JSON:", e);
+      console.error("Raw text response:", result.text);
+      finalResult = {
+        company: "Unknown",
+        people: [],
+        error: "Failed to parse response",
+        rawText: result.text,
+        parseError: e instanceof Error ? e.message : String(e)
+      };
+    }
+
+    return new Response(
+      JSON.stringify({
+        ...finalResult,
+        state: this.state,
+      }),
+      {
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+  }
+}
+
+export default Orchestrator;
