@@ -40,5 +40,3 @@ class_name = "Orchestrator"
 tag = "v1"
 new_sqlite_classes = ["Prospects", "PeopleFinder", "EmailFinder", "Orchestrator"]
 
-# Secrets (use `wrangler secret put WEBSEARCH_API` to set)
-# WEBSEARCH_API = "wsa_b8da7b0023502adbb843f858e7478865b6c8049a0108dd4f8e637ba308de5940"

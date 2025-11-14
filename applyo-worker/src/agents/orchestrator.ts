@@ -3,6 +3,7 @@ import { openai } from "@ai-sdk/openai";
 import { generateText, tool, stepCountIs } from "ai";
 import { z } from "zod";
 import { getAgentByName } from "agents";
+import { searchWeb } from "../lib/tools";
 import type { CloudflareBindings } from "../env.d";
 
 class Orchestrator extends Agent<CloudflareBindings> {
@@ -88,7 +89,7 @@ class Orchestrator extends Agent<CloudflareBindings> {
       }
     });
 
-    const tools = { callPeopleFinder, callEmailFinder };
+    const tools = { callPeopleFinder, callEmailFinder, searchWeb };
 
     const result = await generateText({
       model,
@@ -98,15 +99,18 @@ class Orchestrator extends Agent<CloudflareBindings> {
 Available tools:
 1. **callPeopleFinder** - Find executives/leaders at a specific company (returns company name, website, and 3 people with name and role)
 2. **callEmailFinder** - Find email addresses for a specific person (needs firstName, lastName, company, domain)
+3. **searchWeb** - Run web searches (only use this when a specific person is already provided, to confirm company websites/domains and validate that the person truly works there)
 
-When user asks for emails (e.g., "find founder emails at datacurve" or just "datacurve"):
-1. Extract the company name from the query
-2. Call callPeopleFinder with the company name
-3. For each person found:
-   - Split their name into firstName and lastName
-   - Use the website from callPeopleFinder result to extract the domain (e.g., "https://datacurve.com" -> "datacurve.com")
-   - If no website is provided, infer the domain from the company name (e.g., "datacurve" -> "datacurve.com", "shopify" -> "shopify.com")
-   - Call callEmailFinder with firstName, lastName, company, domain
+Decision flow:
+1. Always extract the company name from the query.
+2. Check if the user already named at least one specific person.
+   - If a person is provided (e.g., "serena ge from datacurve"), **do not** call callPeopleFinder. Instead, use the available info plus searchWeb (this is the only time you may call searchWeb) to gather any missing details (website/domain, role confirmation) and then call callEmailFinder directly.
+   - If no person is provided (e.g., "find founder emails at datacurve"), call callPeopleFinder to identify up to 3 relevant leaders before moving on to email lookups.
+3. For every person you need emails for:
+   - Split their name into firstName and lastName.
+   - Use any known website/domain (from the query or PeopleFinder) to derive the domain (e.g., "https://datacurve.com" -> "datacurve.com").
+   - If no website is available and a specific person was provided, first run searchWeb (only once per person if needed) to confirm the domain. If searchWeb cannot find it, infer the domain from the company name (e.g., "datacurve" -> "datacurve.com") and note when it is inferred. If no person was provided, do not call searchWeb—fall back to inference only after PeopleFinder fails to supply a website.
+   - Call callEmailFinder with firstName, lastName, company, domain to verify emails.
 4. Return ONLY valid JSON with this structure:
 {
   "company": "Company Name",
