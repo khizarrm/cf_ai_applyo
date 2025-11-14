@@ -348,7 +348,7 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="text-center py-3 px-4 mt-auto">
+      <footer className="text-center py-3 px-4 mt-auto bg-[#0a0a0a]">
         <p className="text-xs font-sans font-light text-[#4a4a4a]">
           made by{' '}
           <a
