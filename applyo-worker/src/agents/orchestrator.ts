@@ -177,6 +177,83 @@ User query: ${query}`,
       }
     );
   }
+
+  // Helper function to check people in DB
+  async checkPeopleInDB(companyName: string) {
+    try {
+      const results = await this.env.DB.prepare(`
+        SELECT DISTINCT company_name, website, employee_name, employee_title 
+        FROM companies 
+        WHERE LOWER(company_name) = LOWER(?)
+      `).bind(companyName).all<{
+        company_name: string;
+        website: string | null;
+        employee_name: string;
+        employee_title: string;
+      }>();
+      
+      if (!results.results || results.results.length === 0) {
+        return null;
+      }
+      
+      // Format to match PeopleFinder response
+      return {
+        company: results.results[0].company_name,
+        website: results.results[0].website || "",
+        people: results.results.map(row => ({
+          name: row.employee_name,
+          role: row.employee_title || ""
+        }))
+      };
+    } catch (error) {
+      console.error("Error checking people in DB:", error);
+      return null;
+    }
+  }
+
+  async checkEmailsInDB(employeeName: string, companyName: string) {
+    try {
+      const result = await this.env.DB.prepare(`
+        SELECT email, employee_title, company_name, website 
+        FROM companies 
+        WHERE LOWER(employee_name) = LOWER(?) AND LOWER(company_name) = LOWER(?)
+        LIMIT 1
+      `).bind(employeeName, companyName).first<{
+        email: string;
+        employee_title: string;
+        company_name: string;
+        website: string | null;
+      }>();
+      
+      if (!result) {
+        return null;
+      }
+      
+      // Parse email JSON array
+      let emails: string[] = [];
+      try {
+        emails = JSON.parse(result.email);
+        if (!Array.isArray(emails)) {
+          emails = [result.email];
+        }
+      } catch {
+        emails = [result.email];
+      }
+      
+      // Format to match EmailFinder response
+      return {
+        emails,
+        company_name: result.company_name,
+        website: result.website || "",
+        employee_name: employeeName,
+        employee_title: result.employee_title || "",
+        verification_summary: `${emails.length} out of ${emails.length} emails verified`
+      };
+    } catch (error) {
+      console.error("Error checking emails in DB:", error);
+      return null;
+    }
+  }
 }
 
 export default Orchestrator;

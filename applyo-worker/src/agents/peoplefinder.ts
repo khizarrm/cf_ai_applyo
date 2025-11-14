@@ -32,6 +32,21 @@ class PeopleFinder extends Agent<CloudflareBindings> {
         );
       }
 
+      // Check if people exist in DB first (case-insensitive by company name)
+      const existingPeople = await this.checkPeopleInDB(company);
+      if (existingPeople) {
+        console.log(`Found existing people in DB for ${company}`);
+        return new Response(
+          JSON.stringify({
+            ...existingPeople,
+            state: this.state,
+          }),
+          {
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+      }
+
       const model = openai("gpt-4o-2024-11-20", {
         apiKey: this.env.OPENAI_API_KEY,
       });
@@ -163,6 +178,39 @@ class PeopleFinder extends Agent<CloudflareBindings> {
         headers: { "Content-Type": "application/json" },
       }
     );
+  }
+
+  // Helper function to check people in DB by company name (case-insensitive)
+  async checkPeopleInDB(companyName: string) {
+    try {
+      const results = await this.env.DB.prepare(`
+        SELECT DISTINCT company_name, website, employee_name, employee_title 
+        FROM companies 
+        WHERE LOWER(company_name) = LOWER(?)
+      `).bind(companyName).all<{
+        company_name: string;
+        website: string | null;
+        employee_name: string;
+        employee_title: string;
+      }>();
+      
+      if (!results.results || results.results.length === 0) {
+        return null;
+      }
+      
+      // Format to match PeopleFinder response
+      return {
+        company: results.results[0].company_name,
+        website: results.results[0].website || "",
+        people: results.results.map(row => ({
+          name: row.employee_name,
+          role: row.employee_title || ""
+        }))
+      };
+    } catch (error) {
+      console.error("Error checking people in DB:", error);
+      return null;
+    }
   }
 
 }
