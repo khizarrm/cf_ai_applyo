@@ -138,7 +138,7 @@ export default function Home() {
         }
       `}</style>
 
-      <main className="relative mx-auto w-full max-w-4xl px-4 sm:px-6 flex-grow flex items-start pt-8 sm:pt-12">
+      <main className="relative mx-auto w-full max-w-4xl px-4 sm:px-6 flex-grow pt-8 sm:pt-12">
         <div className={`w-full transition-transform duration-700 ease-out ${result || loading || error ? 'translate-y-[8vh] sm:translate-y-[18vh]' : 'translate-y-[15vh] sm:translate-y-[25vh]'}`}>
           {/* Heading */}
           <div className="mb-6 sm:mb-8 text-center max-w-4xl mx-auto">
@@ -348,8 +348,8 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="text-center py-6 sm:py-8 px-4">
-        <p className="text-xs sm:text-sm font-sans font-light text-[#4a4a4a]">
+      <footer className="text-center py-3 px-4 mt-auto">
+        <p className="text-xs font-sans font-light text-[#4a4a4a]">
           made by{' '}
           <a
             href="https://khizarmalik.com"
