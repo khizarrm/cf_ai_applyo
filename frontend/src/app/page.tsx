@@ -194,11 +194,27 @@ export default function Home() {
                 {result.people.map((person, index) => (
                   <article
                     key={`${person.name}-${index}`}
-                    className="opacity-0 animate-fade-in-up bg-[#151515] border border-[#2a2a2a] rounded-3xl p-6 sm:p-8 hover:border-[#3a3a3a] active:scale-[0.98] transition-all duration-300 flex flex-col"
+                    className="opacity-0 animate-fade-in-up bg-[#151515] border border-[#2a2a2a] rounded-3xl p-6 sm:p-8 hover:border-[#3a3a3a] active:scale-[0.98] transition-all duration-300 flex flex-col relative"
                     style={{ animationDelay: `${index * 0.1}s` }}
                   >
+                    {/* Favicon - Top Right */}
+                    {result.favicon && (
+                      <div className="absolute top-6 right-6 sm:top-8 sm:right-8">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-[#0a0a0a] border border-[#2a2a2a] p-2 flex items-center justify-center">
+                          <img
+                            src={result.favicon}
+                            alt={`${result.company} logo`}
+                            className="w-full h-full object-contain"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
                     {/* Person Info */}
-                    <div className="mb-6 flex-grow">
+                    <div className="mb-6 flex-grow pr-14 sm:pr-16">
                       <h2 className="text-2xl sm:text-3xl font-light tracking-tight mb-3">
                         {person.name}
                       </h2>

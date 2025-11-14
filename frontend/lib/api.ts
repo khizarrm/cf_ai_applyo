@@ -324,6 +324,7 @@ export interface OrchestratorPerson {
 export interface OrchestratorResponse {
   company?: string;
   people?: OrchestratorPerson[];
+  favicon?: string | null;
   message?: string;
   state?: unknown;
   error?: string;
