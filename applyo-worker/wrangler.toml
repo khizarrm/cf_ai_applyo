@@ -38,5 +38,9 @@ class_name = "Orchestrator"
 
 [[migrations]]
 tag = "v1"
-new_sqlite_classes = ["Prospects", "PeopleFinder", "EmailFinder", "Orchestrator"]
+new_sqlite_classes = ["Prospects", "PeopleFinder", "EmailFinder"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["Orchestrator"]
 
