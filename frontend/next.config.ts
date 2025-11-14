@@ -1,8 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: 'export',
-  trailingSlash: true,
+  // Standard Next.js config for Vercel deployment
   images: {
     unoptimized: true
   }

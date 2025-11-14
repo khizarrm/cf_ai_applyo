@@ -1,31 +1,33 @@
 /**
  * API Client for Applyo Frontend
- * Handles authentication and API requests to the backend
+ * Handles API requests to the worker backend
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://applyo-worker.applyo.workers.dev';
-
 /**
- * Base fetch wrapper with credentials handling
+ * Base fetch wrapper - calls worker API directly
  */
 async function apiFetch(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<Response> {
-  const url = `${API_BASE_URL}${endpoint}`;
-  console.log("fetching: ", url)
+  // Always use full worker URL
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://applyo-worker.applyo.workers.dev';
+  const url = `${baseUrl}${endpoint}`;
+  console.log("fetching: ", url);
 
   const defaultOptions: RequestInit = {
-    credentials: 'include', 
     headers: {
       'Content-Type': 'application/json',
       ...options.headers,
     },
   };
 
-  console.log("getting response with: ", defaultOptions)
   const response = await fetch(url, { ...defaultOptions, ...options });
-  console.log("Response: ", response)
+  
+  if (!response.ok) {
+    console.error("API Error:", response.status, response.statusText, "URL:", url);
+  }
+  
   return response;
 }
 
@@ -238,6 +240,28 @@ export const agentsApi = {
 
     if (!response.ok) {
       throw new Error('Failed to call prospects agent');
+    }
+
+    return response.json();
+  },
+
+  /**
+   * Call email finder agent
+   */
+  emailFinder: async (data: {
+    firstName: string;
+    lastName: string;
+    company: string;
+    domain: string;
+  }) => {
+    const response = await apiFetch('/api/agents/emailfinder', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || 'Failed to find emails');
     }
 
     return response.json();
