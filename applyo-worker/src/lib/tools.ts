@@ -20,17 +20,21 @@ export const searchWeb = tool({
         query: z.string().describe("The search query to find information on the web")
     }),
     execute: async ({ query }, options) => {
-        console.log("calling the search tool")
-        const env = (options as any).env;
+        const env = ((options as any)?.env ?? process.env) as {
+            EXA_API_KEY?: string;
+        };
+        if (!env?.EXA_API_KEY) {
+            throw new Error("Search tool - EXA_API_KEY is missing from the environment");
+        }
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000); // 10-second timeout for Exa
         
         try {
-            const response = await fetch('https://api.exa.ai/v1/search', {
+            const response = await fetch('https://api.exa.ai/search', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'x-api-key': env.EXA_API_KEY
+                    'X-API-Key': env.EXA_API_KEY
                 },
                 body: JSON.stringify({
                     query: query,
@@ -46,13 +50,13 @@ export const searchWeb = tool({
             });
 
             clearTimeout(timeoutId);
-
+            const responseText = await response.text();
+            
             if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`Exa AI request failed: ${response.status} ${response.statusText} - ${errorText}`);
+                throw new Error(`Exa AI request failed: ${response.status} ${response.statusText} - ${responseText}`);
             }
 
-            const data = await response.json() as ExaApiResponse;
+            const data = JSON.parse(responseText) as ExaApiResponse;
             
             return {
                 results: (data.results || []).map((r: ExaSearchResult) => ({
